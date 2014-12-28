@@ -1,0 +1,9 @@
+{
+  "component": "test-component",
+  "action": "test-action",
+  "timestamp": "2006-01-02T15:04:05.000000Z",
+  "db_timestamp": "2006-01-02T15:04:05.000000Z",
+  "carrier": {
+    "network_operator": "test_operator"
+  }
+}
