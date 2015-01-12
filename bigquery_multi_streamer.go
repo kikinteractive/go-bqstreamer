@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"code.google.com/p/goauth2/oauth/jwt" // TODO Deprecated, use google.golang.org
+	"golang.org/x/oauth2/jwt"
 	bigquery "google.golang.org/api/bigquery/v2"
 )
 
@@ -27,8 +27,8 @@ type BigQueryMultiStreamer struct {
 	// Channel for sending rows to background streamer.
 	rowChannel chan *row
 
-	// JWT/OAuth2 authentication token.
-	token *jwt.Token
+	// OAuth2/JWT authentication configuration.
+	jwtConfig *jwt.Config
 
 	// Errors are reported to this channel.
 	Errors chan error
@@ -36,7 +36,7 @@ type BigQueryMultiStreamer struct {
 
 // NewBigQueryMultiStreamer returns a new BigQueryMultiStreamer.
 func NewBigQueryMultiStreamer(
-	token *jwt.Token,
+	jwtConfig *jwt.Config,
 	numStreamers int,
 	maxRows int,
 	maxDelay time.Duration) (*BigQueryMultiStreamer, error) {
@@ -44,15 +44,15 @@ func NewBigQueryMultiStreamer(
 	// Create a new streamer, with standard service creation function.
 	// That function (service creation) is overridable for unit testing.
 	return newBigQueryMultiStreamer(
-		NewBigQueryService, token, numStreamers, maxRows, maxDelay)
+		NewBigQueryService, jwtConfig, numStreamers, maxRows, maxDelay)
 }
 
 // newBigQueryMultiStreamer returns a new BigQueryMultiStreamer.
 // It recieves a NewBigQueryService function, which can be set as "always
 // return a nil service" for unit testing.
 func newBigQueryMultiStreamer(
-	newBigQueryService func(t *jwt.Token) (service *bigquery.Service, err error),
-	token *jwt.Token,
+	newBigQueryService func(c *jwt.Config) (service *bigquery.Service, err error),
+	jwtConfig *jwt.Config,
 	numStreamers int,
 	maxRows int,
 	maxDelay time.Duration) (b *BigQueryMultiStreamer, err error) {
@@ -74,7 +74,7 @@ func newBigQueryMultiStreamer(
 	streamers := make([]*BigQueryStreamer, numStreamers)
 	for i := 0; i < numStreamers; i++ {
 		var service *bigquery.Service
-		service, err = newBigQueryService(token)
+		service, err = newBigQueryService(jwtConfig)
 		if err != nil {
 			return
 		}
@@ -91,7 +91,7 @@ func newBigQueryMultiStreamer(
 	b = &BigQueryMultiStreamer{
 		streamers:  streamers,
 		rowChannel: rowChannel,
-		token:      token,
+		jwtConfig:  jwtConfig,
 		Errors:     errors,
 	}
 

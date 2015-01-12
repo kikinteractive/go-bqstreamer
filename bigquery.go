@@ -2,10 +2,10 @@ package main
 
 import (
 	"io/ioutil"
-	"net/http"
 
-	"code.google.com/p/goauth2/oauth"     // TODO Deprecated, use google.golang.org
-	"code.google.com/p/goauth2/oauth/jwt" // TODO Deprecated, use google.golang.org
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/jwt"
 	bigquery "google.golang.org/api/bigquery/v2"
 )
 
@@ -22,43 +22,33 @@ type row struct {
 	data      map[string]bigquery.JsonValue
 }
 
-// NewJWTToken returns a new JWT (OAuth2) token from an email and PEM key.
-func NewJWTToken(email, pemPath string) (t *jwt.Token, err error) {
-	pemBytes, err := ioutil.ReadFile(pemPath)
+// NewJWTConfig returns a new JWT configuration from a JSON key,
+// acquired via https://console.developers.google.com
+// A config is used to authenticate with Google OAuth2.
+func NewJWTConfig(keyPath string) (c *jwt.Config, err error) {
+	keyBytes, err := ioutil.ReadFile(keyPath)
 	if err != nil {
 		return
 	}
 
-	t = jwt.NewToken(email, bigquery.BigqueryScope, pemBytes)
+	c, err = google.JWTConfigFromJSON(
+		keyBytes,
+		"https://www.googleapis.com/auth/bigquery")
 
+	// No need to check if err != nil since we return anyways.
 	return
 }
 
-// NewBigQueryService returns a new BigQuery service (client), authenticated via JWT (OAuth2).
+// NewBigQueryService returns a new BigQuery service (client), authenticated via OAuth2/JWT.
 // NOTE: This function contacts (authenticates with) Google OAuth2 service,
 // thus susceptible to network delays and blocks.
-func NewBigQueryService(t *jwt.Token) (service *bigquery.Service, err error) {
-	// Generate OAuth2 tokens.
-	httpClient := new(http.Client)
-	token, err := t.Assert(httpClient)
-	if err != nil {
-		return
-	}
+func NewBigQueryService(c *jwt.Config) (service *bigquery.Service, err error) {
+	// Create *http.Client.
+	client := c.Client(oauth2.NoContext)
 
-	// Create OAuth2 client.
-	config := &oauth.Config{
-		Scope:    bigquery.BigqueryScope,
-		AuthURL:  "https://accounts.google.com/o/oauth2/auth",
-		TokenURL: "https://accounts.google.com/o/oauth2/token",
-	}
-	transport := &oauth.Transport{Config: config, Token: token}
-	client := transport.Client()
-
-	// Create BigQuery service, authenticated.
+	// Create authenticated BigQuery service.
 	service, err = bigquery.New(client)
-	if err != nil {
-		return
-	}
 
+	// No need to check if err != nil since we return anyways.
 	return
 }

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"code.google.com/p/goauth2/oauth/jwt" // TODO Deprecated, use google.golang.org
+	"golang.org/x/oauth2/jwt"
 	bigquery "google.golang.org/api/bigquery/v2"
 )
 
@@ -12,11 +12,11 @@ import (
 // so it will return a nil BigQuery service.
 //
 // All multi-streamers used in tests use this function along with a nil
-// *jwt.Token.
+// *jwt.Config, which is also not needed.
 //
-// We need this because we don't want to contact BigQuery service and OAuth2 in unit tests,
-// so we multi-streamer passes a nil BigQuery service to each sub-streamer it creates.
-var returnNil = func(t *jwt.Token) (*bigquery.Service, error) { return nil, nil }
+// We need this because we don't want to contact BigQuery service and Google OAuth2 in unit tests,
+// so multi-streamer passes a nil BigQuery service to each sub-streamer it creates.
+var returnNil = func(t *jwt.Config) (*bigquery.Service, error) { return nil, nil }
 
 // TestNewBigQueryStreamer tests creating a new BigQueryMultiStreamer.
 func TestNewBigQueryMultiStreamer(t *testing.T) {

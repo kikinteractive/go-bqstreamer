@@ -9,13 +9,11 @@ import (
 	"testing"
 	"time"
 
-	valid "github.com/asaskevich/govalidator"
 	bigquery "google.golang.org/api/bigquery/v2"
 )
 
 var (
-	email     = flag.String("email", "", "oauth2 email")
-	pemPath   = flag.String("pem", "", "oauth2 pem key path")
+	keyPath   = flag.String("key", "", "oauth2 json key path, acquired via https://console.developers.google.com")
 	projectID = flag.String("project", "", "bigquery project id")
 	datasetID = flag.String("dataset", "", "bigquery dataset id")
 	tableID   = flag.String("table", "", "bigquery table id")
@@ -27,19 +25,13 @@ var (
 // NOTE this test doesn't check if the inserted rows were inserted correctly,
 // it just inserts them.
 //
-// Usage: 'go test -v -tags=integration-multi-streamer -email example@developer.gserviceaccount.com -pem key.pem -project projectID -dataset datasetID -table tableID'
+// Usage: 'go test -v -tags=integration-multi-streamer -key /path/to/key.json -project projectID -dataset datasetID -table tableID'
 func TestMultiStreamerInsertTableToBigQuery(t *testing.T) {
 	flag.Parse()
 
 	// Validate custom parameters.
-	if *email == "" {
-		t.Fatal("missing email parameter")
-	}
-	if !valid.IsEmail(*email) {
-		t.Fatal("email parameter must be a valid email string")
-	}
-	if *pemPath == "" {
-		t.Fatal("missing pem parameter")
+	if *keyPath == "" {
+		t.Fatal("missing key parameter")
 	}
 	if *projectID == "" {
 		t.Fatal("missing project parameter")
@@ -72,14 +64,14 @@ func TestMultiStreamerInsertTableToBigQuery(t *testing.T) {
 		jsonPayload[k] = v
 	}
 
-	token, err := NewJWTToken(*email, *pemPath)
+	jwtConfig, err := NewJWTConfig(*keyPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Set flush max delay threshold to 1 second so sub-streamers will flush
 	// almost immediately.
-	s, err := NewBigQueryMultiStreamer(token, 3, 5, 1*time.Second)
+	s, err := NewBigQueryMultiStreamer(jwtConfig, 3, 5, 1*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
