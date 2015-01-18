@@ -52,16 +52,10 @@ func TestInsertTableToBigQuery(t *testing.T) {
 		t.Fatal(err)
 	}
 	decoder := json.NewDecoder(f)
-	jsonData := map[string]interface{}{}
+	jsonData := []map[string]interface{}{}
 	err = decoder.Decode(&jsonData)
 	if err != nil {
 		t.Fatal("json decoding error:", err)
-	}
-
-	// Convert JSON data read from file to BigQuery JSON type.
-	jsonPayload := map[string]bigquery.JsonValue{}
-	for k, v := range jsonData {
-		jsonPayload[k] = v
 	}
 
 	jwtConfig, err := NewJWTConfig(*keyPath)
@@ -75,13 +69,17 @@ func TestInsertTableToBigQuery(t *testing.T) {
 	}
 
 	// Set flush threshold to 5 so flush will happen immediately.
-	s, err := NewBigQueryStreamer(service, 5, 1*time.Minute)
+	s, err := NewBigQueryStreamer(service, 5, 1*time.Second, 1*time.Second, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Insert the same row several times.
-	for i := 0; i < 5; i++ {
+	// Convert file JSON data to BigQuery JSON type, and queue them in streamer.
+	for _, row := range jsonData {
+		jsonPayload := map[string]bigquery.JsonValue{}
+		for k, v := range row {
+			jsonPayload[k] = v
+		}
 		s.QueueRow(*projectID, *datasetID, *tableID, jsonPayload)
 	}
 
@@ -93,7 +91,7 @@ func TestInsertTableToBigQuery(t *testing.T) {
 	}
 
 	// Start the server and wait enough time for the server to flush.
-	timer := time.NewTimer(5 * time.Second)
+	timer := time.NewTimer(10 * time.Second)
 	go s.Start()
 	select {
 	case <-flushed:

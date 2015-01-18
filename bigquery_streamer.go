@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	bigquery "google.golang.org/api/bigquery/v2"
+	"google.golang.org/api/googleapi"
 )
 
 // A BigQueryStreamer is a BigQuery streamer, queuing rows and streaming to
@@ -21,10 +23,20 @@ type BigQueryStreamer struct {
 	rows []*row
 
 	// Rows index to queue next row into.
+	// TODO using a row index is probably not the best way.
+	// Maybe we should instead create a slice with len = 0, cap = 500 and use
+	// len() instead.
 	rowIndex int // 0
 
 	// Max delay between flushes to BigQuery.
 	maxDelay time.Duration
+
+	// Sleep delay after a rejected insert and before retry.
+	sleepBeforeRetry time.Duration
+
+	// Maximum retry insert attempts for non-rejected row insert errors.
+	// e.g. GoogleAPI HTTP errors, generic HTTP errors, etc.
+	maxRetryInsert int
 
 	// Shutdown channel to stop Start() execution.
 	stopChannel chan bool
@@ -51,7 +63,12 @@ type BigQueryStreamer struct {
 }
 
 // NewBigQueryStreamer returns a new BigQueryStreamer.
-func NewBigQueryStreamer(service *bigquery.Service, maxRows int, maxDelay time.Duration) (b *BigQueryStreamer, err error) {
+func NewBigQueryStreamer(
+	service *bigquery.Service,
+	maxRows int,
+	maxDelay time.Duration,
+	sleepBeforeRetry time.Duration,
+	maxRetryInsert int) (b *BigQueryStreamer, err error) {
 	// TODO add testing for nil bigquery.Service (this will intervene with tests though,
 	// maybe find a way to mock this type somehow?)
 
@@ -67,14 +84,26 @@ func NewBigQueryStreamer(service *bigquery.Service, maxRows int, maxDelay time.D
 		return
 	}
 
+	if sleepBeforeRetry <= 0*time.Nanosecond {
+		err = fmt.Errorf("sleepBeforeRetry must be positive time.Duration >= 1 * time.Nanosecond")
+		return
+	}
+
+	if maxRetryInsert < 0 {
+		err = fmt.Errorf("maxRetryInsert must be non-negative int >= 0")
+		return
+	}
+
 	b = &BigQueryStreamer{
-		service:     service,
-		rowChannel:  make(chan *row, maxRows),
-		rows:        make([]*row, maxRows),
-		rowIndex:    0,
-		maxDelay:    maxDelay,
-		stopChannel: make(chan bool),
-		Errors:      make(chan error, errorBufferSize),
+		service:          service,
+		rowChannel:       make(chan *row, maxRows),
+		rows:             make([]*row, maxRows),
+		rowIndex:         0,
+		maxDelay:         maxDelay,
+		sleepBeforeRetry: sleepBeforeRetry,
+		maxRetryInsert:   maxRetryInsert,
+		stopChannel:      make(chan bool),
+		Errors:           make(chan error, errorBufferSize),
 	}
 
 	// Assign function defaults.
@@ -143,7 +172,8 @@ func (b *BigQueryStreamer) stop() {
 func (b *BigQueryStreamer) flushToBigQuery() {
 	b.insertAll()
 
-	// Init (reset) a new rows queue.
+	// Init (reset) a new rows queue - clear old one and re-allocate.
+	b.rows = nil
 	b.rows = make([]*row, len(b.rows))
 	b.rowIndex = 0
 }
@@ -200,21 +230,46 @@ func (b *BigQueryStreamer) insertAllToBigQuery() {
 	// Stream insert each table to BigQuery.
 	for pID, p := range ps {
 		for dID, d := range p {
-			for tID, t := range d {
-				responses, err := b.insertTable(pID, dID, tID, t)
-				if err != nil {
-					b.Errors <- err
-				} else {
-					for _, e := range responses.InsertErrors {
-						// Fetch error index and error protocol.
-						i := e.Index
-						for _, ep := range e.Errors {
-							v := *ep
-							b.Errors <- fmt.Errorf(
-								"%s.%s.%s.row[%d]: %s in %s: %s: %s",
-								pID, dID, tID, i, v.Reason, v.Location, v.Message, ps[pID][dID][tID][i])
-						}
+			for tID := range d {
+				// Insert to a single table in bulk, and retry insert on certain errors.
+				// Keep on retrying until successful.
+				numRetries := 0
+				for {
+					numRetries++
+					if numRetries > b.maxRetryInsert {
+						b.Errors <- fmt.Errorf(
+							"Insert table %s retried %d times, dropping insert and moving on",
+							tID, numRetries)
+						break
+					} else if len(d[tID]) == 0 {
+						b.Errors <- fmt.Errorf("All rows from table %s have been filtered, moving on", tID)
+						break
 					}
+
+					responses, err := b.insertTable(pID, dID, tID, d[tID])
+
+					// Retry on certain HTTP errors.
+					if b.shouldRetryInsertAfterError(err) {
+						// Retry after HTTP errors usually mean to retry after a certain pause.
+						// See the following link for more info:
+						// https://cloud.google.com/bigquery/troubleshooting-errors
+						time.Sleep(b.sleepBeforeRetry)
+						continue
+					}
+
+					// Retry if insert was rejected due to bad rows.
+					// Occurence of bad rows do not count against retries,
+					// as this means we're trying to insert bad data to BigQuery.
+					rejectedRows := b.filterRejectedRows(responses, pID, dID, tID, d)
+					if len(rejectedRows) > 0 {
+						numRetries--
+						continue
+					}
+
+					// If we reached here it means insert was successful,
+					// so retry isn't necessary.
+					// Thus, break from the "retry insert" loop.
+					break
 				}
 			}
 		}
@@ -242,4 +297,114 @@ func (b *BigQueryStreamer) insertTableToBigQuery(projectID, datasetID, tableID s
 	r, err = tableService.InsertAll(projectID, datasetID, tableID, &request).Do()
 
 	return
+}
+
+// shouldRetryInsertAfterError checks for insert HTTP response errors,
+// and returns true if insert should be retried.
+// See the following url for more info:
+// https://cloud.google.com/bigquery/troubleshooting-errors
+func (b *BigQueryStreamer) shouldRetryInsertAfterError(err error) (shouldRetry bool) {
+	shouldRetry = false
+
+	if err != nil {
+		// Retry on GoogleAPI HTTP server error (503).
+		if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 503 {
+			shouldRetry = true
+		}
+
+		// Log and don't retry for any other response codes,
+		// or if not a Google API response at all.
+		b.Errors <- err
+	}
+
+	return
+}
+
+// filterRejectedRows checks for per-row responses,
+// removes rejected rows given table, and returns index slice of rows removed.
+//
+// Rows are rejected if BigQuery insert response marked them as any string
+// other than "stopped".  See the following url for further info:
+// https://cloud.google.com/bigquery/streaming-data-into-bigquery#troubleshooting
+func (b *BigQueryStreamer) filterRejectedRows(
+	responses *bigquery.TableDataInsertAllResponse,
+	pID, dID, tID string,
+	d map[string]table) (rowsToFilter []int64) {
+
+	// Go through all rows and rows' errors, and remove rejected (bad) rows.
+	if responses != nil {
+		for _, rowErrors := range responses.InsertErrors {
+			// We use a sanity switch to make sure we don't append
+			// the same row to be deleted more than once.
+			filter := false
+
+			// Each row can have several errors.
+			// Go through each of these, and remove row if one of these errors != "stopped".
+			// Also log all non-"stopped" errors on the fly.
+			for _, rowErrorPtr := range rowErrors.Errors {
+				rowError := *rowErrorPtr
+
+				// Mark invalid rows to be deleted.
+				if rowError.Reason != "stopped" {
+					if !filter {
+						rowsToFilter = append(rowsToFilter, rowErrors.Index)
+						filter = true
+					}
+
+					// Log all errors besides "stopped" ones.
+					b.Errors <- fmt.Errorf(
+						"%s.%s.%s.row[%d]: %s in %s: %s: %s",
+						pID, dID, tID,
+						rowErrors.Index,
+						rowError.Reason, rowError.Location, rowError.Message,
+						d[tID][rowErrors.Index])
+				}
+			}
+		}
+	}
+
+	// Remove accumulated rejected rows from table (if there were any).
+	if len(rowsToFilter) > 0 {
+		// Replace modified table instead of original.
+		// This is necessary because original table's slice has a different len().
+		//
+		// XXX is this ok?
+		d[tID] = b.filterRowsFromTable(rowsToFilter, d[tID])
+	}
+
+	return
+}
+
+// "sort"-compliant int64 class. Used for sorting in removeRows() below.
+// This is necessary because for some reason package sort doesn't support sorting int64 slices.
+type int64Slice []int64
+
+func (a int64Slice) Len() int           { return len(a) }
+func (a int64Slice) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a int64Slice) Less(i, j int) bool { return a[i] < a[j] }
+
+// removeRows removes rows by given indexes from given table,
+// and returns the filtered table.
+// Table filtering is done in place, thus the original table is also changed.
+//
+// The table is returned in addition to mutating the given table argument for idiom's sake.
+func (b *BigQueryStreamer) filterRowsFromTable(indexes []int64, t table) table {
+	// Deletion is done in-place, so we copy & sort given indexes,
+	// then delete in reverse order. Reverse order is necessary for not
+	// breaking the order of elements to remove in the slice.
+	//
+	// Create a copy of given index slice in order to not modify the outer index slice.
+	is := append([]int64(nil), indexes...)
+	sort.Sort(sort.Reverse(int64Slice(is)))
+
+	for _, i := range is {
+		// Set bad row to be garbage collected.
+		t[i] = nil
+
+		// Switch old row in-place with last row of slice.
+		t[i], t = t[len(t)-1], t[:len(t)-1]
+	}
+
+	// Return the same table.
+	return t
 }

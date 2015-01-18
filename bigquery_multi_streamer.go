@@ -39,12 +39,14 @@ func NewBigQueryMultiStreamer(
 	jwtConfig *jwt.Config,
 	numStreamers int,
 	maxRows int,
-	maxDelay time.Duration) (*BigQueryMultiStreamer, error) {
+	maxDelay time.Duration,
+	sleepBeforeRetry time.Duration,
+	maxRetryInsert int) (*BigQueryMultiStreamer, error) {
 
 	// Create a new streamer, with standard service creation function.
 	// That function (service creation) is overridable for unit testing.
 	return newBigQueryMultiStreamer(
-		NewBigQueryService, jwtConfig, numStreamers, maxRows, maxDelay)
+		NewBigQueryService, jwtConfig, numStreamers, maxRows, maxDelay, sleepBeforeRetry, maxRetryInsert)
 }
 
 // newBigQueryMultiStreamer returns a new BigQueryMultiStreamer.
@@ -55,7 +57,9 @@ func newBigQueryMultiStreamer(
 	jwtConfig *jwt.Config,
 	numStreamers int,
 	maxRows int,
-	maxDelay time.Duration) (b *BigQueryMultiStreamer, err error) {
+	maxDelay time.Duration,
+	sleepBeforeRetry time.Duration,
+	maxRetryInsert int) (b *BigQueryMultiStreamer, err error) {
 
 	if numStreamers <= 0 {
 		err = fmt.Errorf("numStreamers must be positive int > 0")
@@ -68,7 +72,9 @@ func newBigQueryMultiStreamer(
 	}
 
 	// Initialize sub-streamers and assign them a common row and error channel.
-	rowChannel := make(chan *row, maxRows)
+	// Multi-streamer row length is set as following to avoid filling up
+	// in case sub-streamers get delayed with insert retries.
+	rowChannel := make(chan *row, maxRows*numStreamers)
 	errors := make(chan error, errorBufferSize)
 
 	streamers := make([]*BigQueryStreamer, numStreamers)
@@ -79,7 +85,7 @@ func newBigQueryMultiStreamer(
 			return
 		}
 
-		streamers[i], err = NewBigQueryStreamer(service, maxRows, maxDelay)
+		streamers[i], err = NewBigQueryStreamer(service, maxRows, maxDelay, sleepBeforeRetry, maxRetryInsert)
 		if err != nil {
 			return
 		}

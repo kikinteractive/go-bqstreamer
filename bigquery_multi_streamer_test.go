@@ -21,38 +21,43 @@ var returnNil = func(t *jwt.Config) (*bigquery.Service, error) { return nil, nil
 // TestNewBigQueryStreamer tests creating a new BigQueryMultiStreamer.
 func TestNewBigQueryMultiStreamer(t *testing.T) {
 	// Test giving bad arguments.
-	s, err := newBigQueryMultiStreamer(returnNil, nil, 0, 10, 1*time.Second)
+	s, err := newBigQueryMultiStreamer(returnNil, nil, 0, 10, 1*time.Second, 1*time.Second, 10)
 	if err == nil {
 		t.Error("New multi-streamer with 0 sub-streamers should've failed")
 	}
 
-	s, err = newBigQueryMultiStreamer(returnNil, nil, -1, 10, 1*time.Second)
+	s, err = newBigQueryMultiStreamer(returnNil, nil, -1, 10, 1*time.Second, 1*time.Second, 10)
 	if err == nil {
 		t.Error("New multi-streamer with -1 sub-streamers should've failed")
 	}
 
-	s, err = newBigQueryMultiStreamer(returnNil, nil, 2, 0, 1*time.Second)
+	s, err = newBigQueryMultiStreamer(returnNil, nil, 2, 0, 1*time.Second, 1*time.Second, 10)
 	if err == nil {
 		t.Error("New multi-streamer with 0 max rows should've failed")
 	}
 
-	s, err = newBigQueryMultiStreamer(returnNil, nil, 2, -1, 1*time.Second)
+	s, err = newBigQueryMultiStreamer(returnNil, nil, 2, -1, 1*time.Second, 1*time.Second, 10)
 	if err == nil {
 		t.Error("New multi-streamer with -1 max rows should've failed")
 	}
 
-	s, err = newBigQueryMultiStreamer(returnNil, nil, 2, 10, 0)
+	s, err = newBigQueryMultiStreamer(returnNil, nil, 2, 10, 0, 1*time.Second, 10)
 	if err == nil {
 		t.Error("New multi-streamer with 0 max delay should've failed")
 	}
 
-	s, err = newBigQueryMultiStreamer(returnNil, nil, 2, 10, -1*time.Nanosecond)
+	s, err = newBigQueryMultiStreamer(returnNil, nil, 2, 10, -1*time.Nanosecond, 1*time.Second, 10)
 	if err == nil {
 		t.Error("New multi-streamer with -1 nanosecond max delay should've failed")
 	}
 
+	s, err = newBigQueryMultiStreamer(returnNil, nil, 2, 10, 1*time.Nanosecond, -1*time.Second, 10)
+	if err == nil {
+		t.Error("New multi-streamer with -1 second sleep before retry should've failed")
+	}
+
 	// Test giving good arguments.
-	s, err = newBigQueryMultiStreamer(returnNil, nil, 50, 10, 1*time.Second)
+	s, err = newBigQueryMultiStreamer(returnNil, nil, 50, 10, 1*time.Second, 1*time.Second, 10)
 	if err != nil {
 		t.Error(err)
 	}
@@ -63,7 +68,7 @@ func TestNewBigQueryMultiStreamer(t *testing.T) {
 	if len(s.rowChannel) != 0 {
 		t.Error("Row channel isn't empty")
 	}
-	if cap(s.rowChannel) != 10 {
+	if cap(s.rowChannel) != 50*10 {
 		t.Errorf("cap(rowChannel) != 10 (is %d)", len(s.rowChannel))
 	}
 
@@ -99,9 +104,9 @@ func TestNewBigQueryMultiStreamer(t *testing.T) {
 
 // TestStartStreamer tests calling Start() starts all sub-streamers.
 func TestStartMultiStreamer(t *testing.T) {
-	s, err := newBigQueryMultiStreamer(returnNil, nil, 50, 10, 1*time.Second)
+	s, err := newBigQueryMultiStreamer(returnNil, nil, 50, 10, 1*time.Second, 1*time.Second, 10)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Override sub-streamers.Start() function to just notify they had started.
@@ -134,9 +139,9 @@ func TestStartMultiStreamer(t *testing.T) {
 
 // TestStopMultiStreamer tests calling Stop() stops all sub-streamers.
 func TestStopMultiStreamer(t *testing.T) {
-	s, err := newBigQueryMultiStreamer(returnNil, nil, 50, 10, 1*time.Second)
+	s, err := newBigQueryMultiStreamer(returnNil, nil, 50, 10, 1*time.Second, 1*time.Second, 10)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Override sub-streamers.Stop() function to notify they had stopped.
@@ -174,9 +179,9 @@ func TestStopMultiStreamer(t *testing.T) {
 // TestQueueRowMultiStreamer queues 4 rows to 2 tables, 2 datasets,
 // and 2 projects (total 4 rows) and tests if they were queued by the sub-streamers.
 func TestQueueRowMultiStreamer(t *testing.T) {
-	s, err := newBigQueryMultiStreamer(returnNil, nil, 5, 10, 1*time.Second)
+	s, err := newBigQueryMultiStreamer(returnNil, nil, 5, 10, 1*time.Second, 1*time.Second, 10)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Override sub-streamers.flush() function to not flush, since we're
