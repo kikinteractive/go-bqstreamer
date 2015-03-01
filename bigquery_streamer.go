@@ -173,7 +173,6 @@ func (b *BigQueryStreamer) flushToBigQuery() {
 	b.insertAll()
 
 	// Init (reset) a new rows queue - clear old one and re-allocate.
-	b.rows = nil
 	b.rows = make([]*row, len(b.rows))
 	b.rowIndex = 0
 }
