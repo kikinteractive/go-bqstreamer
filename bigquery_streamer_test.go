@@ -372,7 +372,7 @@ func TestInsertAll(t *testing.T) {
 				t.Errorf("Row %d missing from table %s.%s.%s", i, p, d, tt)
 			}
 
-			if v, ok := r[fmt.Sprintf("k%d", i)]; !ok {
+			if v, ok := r.jsonValue[fmt.Sprintf("k%d", i)]; !ok {
 				t.Errorf("Key k%d missing from %s.%s.%s.row[%d] (row is %s)", i, p, d, tt, i, r)
 			} else if v != fmt.Sprintf("v%d", i) {
 				t.Errorf("%s.%s.%s.row[%d] key's value is not v%d (is %s)", p, d, tt, i, i, v)
@@ -523,11 +523,11 @@ func TestRemoveRowsFromTable(t *testing.T) {
 	// Split 10 rows equally to two tables.
 
 	tb := table{
-		map[string]bigquery.JsonValue{"k10": "v10"},
-		map[string]bigquery.JsonValue{"k11": "v11"},
-		map[string]bigquery.JsonValue{"k12": "v12"},
-		map[string]bigquery.JsonValue{"k13": "v13"},
-		map[string]bigquery.JsonValue{"k14": "v14"}}
+		&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k10": "v10"}},
+		&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k11": "v11"}},
+		&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k12": "v12"}},
+		&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k13": "v13"}},
+		&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k14": "v14"}}}
 
 	// Remove rows 0, 3, 4 from table #1.
 	filtered := s.filterRowsFromTable([]int64{0, 3, 4}, tb)
@@ -537,16 +537,16 @@ func TestRemoveRowsFromTable(t *testing.T) {
 	// Removal is done in place, switching places with the last element in slice.
 	// Thus row 2 should be first (switched with row 0 upon its deletion),
 	// and row 1 afterwards.
-	if val, ok := filtered[0]["k12"]; !ok {
+	if val, ok := filtered[0].jsonValue["k12"]; !ok {
 		t.Errorf("Key k12 is not in row filtered[0]: %s", filtered)
 	} else if val != "v12" {
-		t.Errorf("row filtered[0][k12] != v12 is: %s", filtered[0]["k12"])
+		t.Errorf("row filtered[0][k12] != v12 is: %s", filtered[0].jsonValue["k12"])
 	}
 
-	if val, ok := filtered[1]["k11"]; !ok {
+	if val, ok := filtered[1].jsonValue["k11"]; !ok {
 		t.Errorf("Key k11 is not in row filtered[1]: %s", filtered)
 	} else if val != "v11" {
-		t.Errorf("row filtered[1][k11] != v11 is: %s", filtered[1]["k11"])
+		t.Errorf("row filtered[1][k11] != v11 is: %s", filtered[1].jsonValue["k11"])
 	}
 }
 
@@ -566,17 +566,17 @@ func TestFilterRejectedRows(t *testing.T) {
 	// Distribute 10 rows equally to 2 tables.
 	d := map[string]table{
 		"t1": table{
-			map[string]bigquery.JsonValue{"k10": "v10"},
-			map[string]bigquery.JsonValue{"k11": "v11"},
-			map[string]bigquery.JsonValue{"k12": "v12"},
-			map[string]bigquery.JsonValue{"k13": "v13"},
-			map[string]bigquery.JsonValue{"k14": "v14"}},
+			&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k10": "v10"}},
+			&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k11": "v11"}},
+			&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k12": "v12"}},
+			&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k13": "v13"}},
+			&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k14": "v14"}}},
 		"t2": table{
-			map[string]bigquery.JsonValue{"k20": "v20"},
-			map[string]bigquery.JsonValue{"k21": "v21"},
-			map[string]bigquery.JsonValue{"k22": "v22"},
-			map[string]bigquery.JsonValue{"k23": "v23"},
-			map[string]bigquery.JsonValue{"k24": "v24"}}}
+			&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k20": "v20"}},
+			&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k21": "v21"}},
+			&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k22": "v22"}},
+			&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k23": "v23"}},
+			&tableRow{rowID: "0", jsonValue: map[string]bigquery.JsonValue{"k24": "v24"}}}}
 
 	// Return rejected rows 0, 1, 3 for insert 1.
 	r1 := &bigquery.TableDataInsertAllResponse{
@@ -621,16 +621,16 @@ func TestFilterRejectedRows(t *testing.T) {
 		if len(d["t1"]) != 2 {
 			t.Errorf("len(t1) != 2, is: %d", len(d["t1"]))
 		} else {
-			if val, ok := d["t1"][0]["k12"]; !ok {
+			if val, ok := d["t1"][0].jsonValue["k12"]; !ok {
 				t.Errorf("Key k12 is not in row d[t1][0]: %s", d["t1"])
 			} else if val != "v12" {
-				t.Errorf("row d[t1][0][k12] != v12 is: %s", d["t1"][0]["k12"])
+				t.Errorf("row d[t1][0][k12] != v12 is: %s", d["t1"][0].jsonValue["k12"])
 			}
 
-			if val, ok := d["t1"][1]["k13"]; !ok {
+			if val, ok := d["t1"][1].jsonValue["k13"]; !ok {
 				t.Errorf("Key k13 is not in row d[t1][1]: %s", d["t1"])
 			} else if val != "v13" {
-				t.Errorf("row d[t1][1][k13] != v13 is: %s", d["t1"][1]["k13"])
+				t.Errorf("row d[t1][1][k13] != v13 is: %s", d["t1"][1].jsonValue["k13"])
 			}
 		}
 	}
@@ -643,10 +643,10 @@ func TestFilterRejectedRows(t *testing.T) {
 	for i := 0; i < len(d["t2"]); i++ {
 		k := fmt.Sprintf("k2%d", i)
 		v := fmt.Sprintf("v2%d", i)
-		if val, ok := d["t2"][i][k]; !ok {
+		if val, ok := d["t2"][i].jsonValue[k]; !ok {
 			t.Errorf("Key %s is not in row d[t2][%d]: %s", k, i, d["t2"])
 		} else if val != v {
-			t.Errorf("row d[t2][%d][%s] != v is: %s", i, k, d["t2"][i]["k"])
+			t.Errorf("row d[t2][%d][%s] != v is: %s", i, k, d["t2"][i].jsonValue["k"])
 		}
 	}
 }
@@ -689,10 +689,10 @@ func TestInsertAllWithServerErrorResponse(t *testing.T) {
 				for i := 0; i < 5; i++ {
 					k := fmt.Sprintf("k%d", i)
 					v := fmt.Sprintf("v%d", i)
-					if val, ok := tt[i][k]; !ok {
+					if val, ok := tt[i].jsonValue[k]; !ok {
 						t.Errorf("Key %s is not in row tt[%d]: %s", k, i, tt)
 					} else if val != v {
-						t.Errorf("row tt[%d][%s] != %s is: %s", i, k, v, tt[i][k])
+						t.Errorf("row tt[%d][%s] != %s is: %s", i, k, v, tt[i].jsonValue[k])
 					}
 				}
 			}
@@ -962,22 +962,22 @@ func TestInsertAllWithRejectedResponse(t *testing.T) {
 			if len(tt) != 3 {
 				t.Errorf("len(tt) != 3, is: %s", tt)
 			} else {
-				if val, ok := tt[0]["k3"]; !ok {
+				if val, ok := tt[0].jsonValue["k3"]; !ok {
 					t.Errorf("Key k3 is not in row tt[0]: %s", tt)
 				} else if val != "v3" {
-					t.Errorf("row tt[0][k3] != v3 is: %s", tt[0]["k3"])
+					t.Errorf("row tt[0][k3] != v3 is: %s", tt[0].jsonValue["k3"])
 				}
 
-				if val, ok := tt[1]["k4"]; !ok {
+				if val, ok := tt[1].jsonValue["k4"]; !ok {
 					t.Errorf("Key k4 is not in row tt[1]: %s", tt)
 				} else if val != "v4" {
-					t.Errorf("row tt[1][k4] != v4 is: %s", tt[1]["k4"])
+					t.Errorf("row tt[1][k4] != v4 is: %s", tt[1].jsonValue["k4"])
 				}
 
-				if val, ok := tt[2]["k2"]; !ok {
+				if val, ok := tt[2].jsonValue["k2"]; !ok {
 					t.Errorf("Key k2 is not in row tt[2]: %s", tt)
 				} else if val != "v2" {
-					t.Errorf("row tt[2][k2] != v2 is: %s", tt[2]["k2"])
+					t.Errorf("row tt[2][k2] != v2 is: %s", tt[2].jsonValue["k2"])
 				}
 			}
 

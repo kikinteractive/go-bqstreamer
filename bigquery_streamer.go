@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/dchest/uniuri"
 	bigquery "google.golang.org/api/bigquery/v2"
 	"google.golang.org/api/googleapi"
 )
@@ -185,8 +186,15 @@ func (b *BigQueryStreamer) QueueRow(projectID, datasetID, tableID string, jsonRo
 // BigQuery data types.
 type project map[string]dataset
 type dataset map[string]table
-type table []tableRow
-type tableRow map[string]bigquery.JsonValue
+type table []*tableRow
+type tableRow struct {
+	// rowID is used to distinguish this row if a retry insert is necessary.
+	// This is needed for row de-duplication.
+	rowID string
+
+	// Row payload.
+	jsonValue map[string]bigquery.JsonValue
+}
 
 // createTableIfNotExists initializes given project, dataset, and table
 // in project map if they haven't been initialized yet.
@@ -222,8 +230,12 @@ func (b *BigQueryStreamer) insertAllToBigQuery() {
 		// Create project, dataset and table if uninitalized.
 		createTableIfNotExists(ps, p, d, t)
 
-		// Assign row to table.
-		ps[p][d][t] = append(ps[p][d][t], r.data)
+		// Append row to table,
+		// and generate random row ID of 16 character length, for de-duplication purposes.
+		ps[p][d][t] = append(ps[p][d][t], &tableRow{
+			rowID:     uniuri.NewLen(16),
+			jsonValue: r.data,
+		})
 	}
 
 	// Stream insert each table to BigQuery.
@@ -283,8 +295,10 @@ func (b *BigQueryStreamer) insertTableToBigQuery(projectID, datasetID, tableID s
 	r *bigquery.TableDataInsertAllResponse, err error) {
 	// Convert all rows to bigquery table rows.
 	rows := make([]*bigquery.TableDataInsertAllRequestRows, len(t))
-	for i, json := range t {
-		rows[i] = &bigquery.TableDataInsertAllRequestRows{Json: json}
+	for i, row := range t {
+		rows[i] = &bigquery.TableDataInsertAllRequestRows{
+			InsertId: row.rowID,
+			Json:     row.jsonValue}
 	}
 
 	// Generate request, tabledata and send.
@@ -364,7 +378,7 @@ func (b *BigQueryStreamer) filterRejectedRows(
 						pID, dID, tID,
 						rowErrors.Index,
 						rowError.Reason, rowError.Location, rowError.Message,
-						d[tID][rowErrors.Index])
+						d[tID][rowErrors.Index].jsonValue)
 				}
 			}
 		}
@@ -405,10 +419,8 @@ func (b *BigQueryStreamer) filterRowsFromTable(indexes []int64, t table) table {
 	sort.Sort(sort.Reverse(int64Slice(is)))
 
 	for _, i := range is {
-		// Set bad row to be garbage collected.
-		t[i] = nil
-
-		// Switch old row in-place with last row of slice.
+		// Garbage collect old row,
+		// and switch its place with with last row of slice.
 		t[i], t = t[len(t)-1], t[:len(t)-1]
 	}
 
