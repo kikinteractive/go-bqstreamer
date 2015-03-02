@@ -306,9 +306,12 @@ func (b *BigQueryStreamer) shouldRetryInsertAfterError(err error) (shouldRetry b
 	shouldRetry = false
 
 	if err != nil {
-		// Retry on GoogleAPI HTTP server error (503).
-		if gerr, ok := err.(*googleapi.Error); ok && gerr.Code == 503 {
-			shouldRetry = true
+		// Retry on GoogleAPI HTTP server error (500, 503).
+		if gerr, ok := err.(*googleapi.Error); ok {
+			switch gerr.Code {
+			case 500, 503:
+				shouldRetry = true
+			}
 		}
 
 		// Log and don't retry for any other response codes,
@@ -338,13 +341,18 @@ func (b *BigQueryStreamer) filterRejectedRows(
 			filter := false
 
 			// Each row can have several errors.
-			// Go through each of these, and remove row if one of these errors != "stopped".
+			// Go through each of these, and remove row if one of these errors != "stopped" or "timeout".
 			// Also log all non-"stopped" errors on the fly.
 			for _, rowErrorPtr := range rowErrors.Errors {
 				rowError := *rowErrorPtr
 
 				// Mark invalid rows to be deleted.
-				if rowError.Reason != "stopped" {
+				switch rowError.Reason {
+				// Do nothing for these types of error reason.
+				case "stopped", "timeout":
+
+				// Filter and log everything else.
+				default:
 					if !filter {
 						rowsToFilter = append(rowsToFilter, rowErrors.Index)
 						filter = true

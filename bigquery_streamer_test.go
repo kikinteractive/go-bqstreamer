@@ -391,7 +391,7 @@ func TestInsertAll(t *testing.T) {
 
 // TestShouldRetryInsertAfterError tests if the ShouldRetry function correctly
 // returns true for specific errors.
-// Currently only for googleapi.Errorgoogleapi.Error.Code = 503
+// Currently only for googleapi.Errorgoogleapi.Error.Code = 503 or 500
 func TestShouldRetryInsertAfterError(t *testing.T) {
 	s, err := NewBigQueryStreamer(nil, 5, 1*time.Minute, 1*time.Second, 10)
 	if err != nil {
@@ -447,7 +447,7 @@ func TestShouldRetryInsertAfterError(t *testing.T) {
 	// Test another GoogleAPI response with a different status code,
 	// and check the function returns false.
 	if s.shouldRetryInsertAfterError(
-		&googleapi.Error{Code: 500, Message: "m", Body: "b", Errors: []googleapi.ErrorItem{
+		&googleapi.Error{Code: 501, Message: "m", Body: "b", Errors: []googleapi.ErrorItem{
 			googleapi.ErrorItem{Reason: "r1", Message: "m1"},
 			googleapi.ErrorItem{Reason: "r2", Message: "m2"}}}) {
 		t.Error("GoogleAPI HTTP 500 insert error was marked as \"to be retried\"")
@@ -459,7 +459,7 @@ func TestShouldRetryInsertAfterError(t *testing.T) {
 		if gerr, ok := err.(*googleapi.Error); !ok {
 			t.Error("Logged error after GoogleAPI HTTP 503 insert error wasn't a GoogleAPI error")
 		} else {
-			if gerr.Code != 500 {
+			if gerr.Code != 501 {
 				t.Error("Logged GoogleAPI HTTP 503 error code != 503")
 			}
 			if gerr.Message != "m" {
@@ -652,7 +652,7 @@ func TestFilterRejectedRows(t *testing.T) {
 }
 
 // TestInsertAllWithServerErrorResponse tests if an insert failed with a server
-// error (503) triggers a retry insert.
+// error (500, 503) triggers a retry insert.
 func TestInsertAllWithServerErrorResponse(t *testing.T) {
 	// Set a row threshold to 5 so it will flush immediately on calling Start().
 	// Also make retry sleep delay as small as possible and != 0.
@@ -762,11 +762,11 @@ func TestInsertAllWithNonServerErrorResponse(t *testing.T) {
 	flushed := make(chan bool)
 	calledNum := 0
 	s.insertTable = func(pId, dId, tId string, tt table) (r *bigquery.TableDataInsertAllResponse, err error) {
-		// Return a 500 (not 503) server error on first call,
+		// Return a 501 (not 500, 503) server error on first call,
 		// and test if it did NOT trigger a retry insert.
 		switch calledNum {
 		case 0:
-			err = &googleapi.Error{Code: 500, Message: "m", Body: "b", Errors: []googleapi.ErrorItem{
+			err = &googleapi.Error{Code: 501, Message: "m", Body: "b", Errors: []googleapi.ErrorItem{
 				googleapi.ErrorItem{Reason: "r1", Message: "m1"},
 				googleapi.ErrorItem{Reason: "r2", Message: "m2"}}}
 		default:
@@ -951,31 +951,40 @@ func TestInsertAllWithRejectedResponse(t *testing.T) {
 					&bigquery.TableDataInsertAllResponseInsertErrors{Index: 2, Errors: []*bigquery.ErrorProto{
 						&bigquery.ErrorProto{Location: "l20", Message: "m20", Reason: "stopped"}}},
 					&bigquery.TableDataInsertAllResponseInsertErrors{Index: 4, Errors: []*bigquery.ErrorProto{
-						&bigquery.ErrorProto{Location: "l40", Message: "m40", Reason: "invalid"}}}}}
+						&bigquery.ErrorProto{Location: "l40", Message: "m40", Reason: "timeout"}}}}}
 		case 1:
-			// This call's insert request should only include rows 2, 3 in that order.
-			// This is because row 2 was marked as "stopped",
-			// and row 3 wasn't marked by any error at all.
-			if len(tt) != 2 {
-				t.Errorf("len(tt) != 2, is: %s", tt)
+			// This call's insert request should only include rows 3, 4, 2 in that order.
+			// The order of indexes is changed because of the way the rows are
+			// deleted (see filterRowsFromTable() function)
+			//
+			// Also, these are the indexes that are not filtered because rows 2,4 were marked
+			// as "stopped" and "timeout", and row 3 wasn't marked by any error at all.
+			if len(tt) != 3 {
+				t.Errorf("len(tt) != 3, is: %s", tt)
 			} else {
-				if val, ok := tt[0]["k2"]; !ok {
-					t.Errorf("Key k2 is not in row tt[0]: %s", tt)
-				} else if val != "v2" {
-					t.Errorf("row tt[0][k2] != v2 is: %s", tt[0]["k2"])
+				if val, ok := tt[0]["k3"]; !ok {
+					t.Errorf("Key k3 is not in row tt[0]: %s", tt)
+				} else if val != "v3" {
+					t.Errorf("row tt[0][k3] != v3 is: %s", tt[0]["k3"])
 				}
 
-				if val, ok := tt[1]["k3"]; !ok {
-					t.Errorf("Key k3 is not in row tt[1]: %s", tt)
-				} else if val != "v3" {
-					t.Errorf("row tt[1][k3] != v3 is: %s", tt[1]["k3"])
+				if val, ok := tt[1]["k4"]; !ok {
+					t.Errorf("Key k4 is not in row tt[1]: %s", tt)
+				} else if val != "v4" {
+					t.Errorf("row tt[1][k4] != v4 is: %s", tt[1]["k4"])
+				}
+
+				if val, ok := tt[2]["k2"]; !ok {
+					t.Errorf("Key k2 is not in row tt[2]: %s", tt)
+				} else if val != "v2" {
+					t.Errorf("row tt[2][k2] != v2 is: %s", tt[2]["k2"])
 				}
 			}
 
 			// Return 0 insert errors.
 			r = &bigquery.TableDataInsertAllResponse{}
 		default:
-			t.Error("insertTable() was called more than 2 times")
+			t.Error("insertTable() was called more than 3 times")
 		}
 
 		// Notify that this table was mock "flushed".
