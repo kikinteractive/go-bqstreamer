@@ -1,4 +1,4 @@
-package main
+package bqstreamer
 
 import (
 	"fmt"
@@ -9,41 +9,41 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
-// TestNewBigQueryStreamer tests creating a new BigQueryStreamer.
-func TestNewBigQueryStreamer(t *testing.T) {
+// TestNewStreamer tests creating a new Streamer.
+func TestNewStreamer(t *testing.T) {
 	// Test sending bad arguments.
-	s, err := NewBigQueryStreamer(nil, 0, 1*time.Second, 1*time.Second, 10)
+	s, err := NewStreamer(nil, 0, 1*time.Second, 1*time.Second, 10)
 	if err == nil {
 		t.Error("New streamer with 0 max rows should've failed")
 	}
 
-	s, err = NewBigQueryStreamer(nil, -1, 1*time.Second, 1*time.Second, 10)
+	s, err = NewStreamer(nil, -1, 1*time.Second, 1*time.Second, 10)
 	if err == nil {
 		t.Error("New streamer with -1 max rows should've failed")
 	}
 
-	s, err = NewBigQueryStreamer(nil, 10, 0, 1*time.Second, 10)
+	s, err = NewStreamer(nil, 10, 0, 1*time.Second, 10)
 	if err == nil {
 		t.Error("New streamer with 0 max delay should've failed")
 	}
 
-	s, err = NewBigQueryStreamer(nil, 10, -1*time.Nanosecond, 1*time.Second, 10)
+	s, err = NewStreamer(nil, 10, -1*time.Nanosecond, 1*time.Second, 10)
 	if err == nil {
 		t.Error("New streamer with -1 nanosecond max delay should've failed")
 	}
 
-	s, err = NewBigQueryStreamer(nil, 10, 1*time.Nanosecond, -1*time.Second, 10)
+	s, err = NewStreamer(nil, 10, 1*time.Nanosecond, -1*time.Second, 10)
 	if err == nil {
 		t.Error("New multi-streamer with -1 second sleep before retry should've failed")
 	}
 
-	s, err = NewBigQueryStreamer(nil, 10, 1*time.Nanosecond, -1*time.Second, -1)
+	s, err = NewStreamer(nil, 10, 1*time.Nanosecond, -1*time.Second, -1)
 	if err == nil {
 		t.Error("New multi-streamer with -1 max retry insert sleep should've failed")
 	}
 
 	// Test sending valid arguments.
-	s, err = NewBigQueryStreamer(nil, 10, 1*time.Second, 1*time.Second, 10)
+	s, err = NewStreamer(nil, 10, 1*time.Second, 1*time.Second, 10)
 	if err != nil {
 		t.Error(err)
 	}
@@ -117,7 +117,7 @@ func TestNewBigQueryStreamer(t *testing.T) {
 func TestStop(t *testing.T) {
 	// Set delay threshold to be large enough so we could test if stop message
 	// caused streamer to stop and flush.
-	s, err := NewBigQueryStreamer(nil, 100, 1*time.Minute, 1*time.Second, 10)
+	s, err := NewStreamer(nil, 100, 1*time.Minute, 1*time.Second, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestStop(t *testing.T) {
 
 // TestQueueRow tests queueing a row.
 func TestQueueRow(t *testing.T) {
-	s, err := NewBigQueryStreamer(nil, 10, 1*time.Second, 1*time.Second, 10)
+	s, err := NewStreamer(nil, 10, 1*time.Second, 1*time.Second, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestQueueRow(t *testing.T) {
 func TestMaxDelayFlushCall(t *testing.T) {
 	// Set maxRows = 10 and insert a single line, so we can be sure flushing
 	// occured by delay timer expiring.
-	s, err := NewBigQueryStreamer(nil, 10, 1*time.Second, 1*time.Second, 10)
+	s, err := NewStreamer(nil, 10, 1*time.Second, 1*time.Second, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestMaxDelayFlushCall(t *testing.T) {
 func TestMaxRowsFlushCall(t *testing.T) {
 	// Set a long delay before flushing, so we can be sure flushing occured due
 	// to rows filling up.
-	s, err := NewBigQueryStreamer(nil, 10, 1*time.Minute, 1*time.Second, 10)
+	s, err := NewStreamer(nil, 10, 1*time.Minute, 1*time.Second, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func TestMaxRowsFlushCall(t *testing.T) {
 func TestInsertAll(t *testing.T) {
 	// We intend to insert 20 rows in this test, so set maxRows = 20 and delay
 	// to be long enough so flush will occur due to rows queue filling up.
-	s, err := NewBigQueryStreamer(nil, 20, 1*time.Minute, 1*time.Second, 10)
+	s, err := NewStreamer(nil, 20, 1*time.Minute, 1*time.Second, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -393,7 +393,7 @@ func TestInsertAll(t *testing.T) {
 // returns true for specific errors.
 // Currently only for googleapi.Errorgoogleapi.Error.Code = 503 or 500
 func TestShouldRetryInsertAfterError(t *testing.T) {
-	s, err := NewBigQueryStreamer(nil, 5, 1*time.Minute, 1*time.Second, 10)
+	s, err := NewStreamer(nil, 5, 1*time.Minute, 1*time.Second, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -515,7 +515,7 @@ func TestRemoveRowsFromTable(t *testing.T) {
 	// in this test (5), so flushing won't happen because of this.
 	// Also, make maxDelay longer than the amount of time this test is going to take,
 	// for the same reason.
-	s, err := NewBigQueryStreamer(nil, 10, 1*time.Minute, 1*time.Second, 10)
+	s, err := NewStreamer(nil, 10, 1*time.Minute, 1*time.Second, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -558,7 +558,7 @@ func TestFilterRejectedRows(t *testing.T) {
 	// in this test (5), so flushing won't happen because of this.
 	// Also, make maxDelay longer than the amount of time this test is going to take,
 	// for the same reason.
-	s, err := NewBigQueryStreamer(nil, 10, 1*time.Minute, 1*time.Second, 10)
+	s, err := NewStreamer(nil, 10, 1*time.Minute, 1*time.Second, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -656,7 +656,7 @@ func TestFilterRejectedRows(t *testing.T) {
 func TestInsertAllWithServerErrorResponse(t *testing.T) {
 	// Set a row threshold to 5 so it will flush immediately on calling Start().
 	// Also make retry sleep delay as small as possible and != 0.
-	s, err := NewBigQueryStreamer(nil, 5, 1*time.Minute, 1*time.Nanosecond, 10)
+	s, err := NewStreamer(nil, 5, 1*time.Minute, 1*time.Nanosecond, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -745,7 +745,7 @@ func TestInsertAllWithServerErrorResponse(t *testing.T) {
 func TestInsertAllWithNonServerErrorResponse(t *testing.T) {
 	// Set a row threshold to 5 so it will flush immediately on calling Start().
 	// Also make retry sleep delay as small as possible and != 0.
-	s, err := NewBigQueryStreamer(nil, 5, 1*time.Minute, 1*time.Nanosecond, 10)
+	s, err := NewStreamer(nil, 5, 1*time.Minute, 1*time.Nanosecond, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -808,7 +808,7 @@ func TestInsertAllWithNonServerErrorResponse(t *testing.T) {
 func TestMaxRetryInsert(t *testing.T) {
 	// Set a row threshold to 5 so it will flush immediately on calling Start().
 	// Also make retry sleep delay as small as possible and != 0.
-	s, err := NewBigQueryStreamer(nil, 5, 1*time.Minute, 1*time.Nanosecond, 3)
+	s, err := NewStreamer(nil, 5, 1*time.Minute, 1*time.Nanosecond, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -913,7 +913,7 @@ func TestMaxRetryInsert(t *testing.T) {
 func TestInsertAllWithRejectedResponse(t *testing.T) {
 	// Set a row threshold to 5 so it will flush immediately on calling Start().
 	// Also make retry sleep delay as small as possible and != 0.
-	s, err := NewBigQueryStreamer(nil, 5, 1*time.Minute, 1*time.Nanosecond, 10)
+	s, err := NewStreamer(nil, 5, 1*time.Minute, 1*time.Nanosecond, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1030,7 +1030,7 @@ func TestInsertAllWithRejectedResponse(t *testing.T) {
 func TestInsertwithAllRowsRejected(t *testing.T) {
 	// Set a row threshold to 5 so it will flush immediately on calling Start().
 	// Also make retry sleep delay as small as possible and != 0.
-	s, err := NewBigQueryStreamer(nil, 5, 1*time.Minute, 1*time.Nanosecond, 10)
+	s, err := NewStreamer(nil, 5, 1*time.Minute, 1*time.Nanosecond, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1115,7 +1115,7 @@ func TestInsertwithAllRowsRejected(t *testing.T) {
 // This function is very similar in structure to TestInsertAll().
 func TestInsertAllLogErrors(t *testing.T) {
 	// Set a row threshold to 5 so it will flush immediately on calling Start().
-	s, err := NewBigQueryStreamer(nil, 5, 1*time.Minute, 1*time.Second, 10)
+	s, err := NewStreamer(nil, 5, 1*time.Minute, 1*time.Second, 10)
 	if err != nil {
 		t.Fatal(err)
 	}

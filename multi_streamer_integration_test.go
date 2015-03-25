@@ -1,6 +1,6 @@
-// +build integration
+// +build integrationmulti
 
-package main
+package bqstreamer
 
 import (
 	"encoding/json"
@@ -20,13 +20,13 @@ var (
 	jsonPath  = flag.String("json", "bigquery_streamer_integration.json", "json file path to be inserted into bigquery")
 )
 
-// TestInsertTableToBigQuery test stream inserting a row (given as argument)
-// 5 times to BigQuery, and logs the response.
+// TestMultiStreamerInsertTableToBigQuery test stream inserting a row (given as argument)
+// 5 times to BigQuery using a multi-streamer, and logs the response.
 // NOTE this test doesn't check if the inserted rows were inserted correctly,
 // it just inserts them.
 //
-// Usage: 'go test -v -tags=integration -key /path/to/key.json -project projectID -dataset datasetID -table tableID'
-func TestInsertTableToBigQuery(t *testing.T) {
+// Usage: 'go test -v -tags=integration-multi-streamer -key /path/to/key.json -project projectID -dataset datasetID -table tableID'
+func TestMultiStreamerInsertTableToBigQuery(t *testing.T) {
 	flag.Parse()
 
 	// Validate custom parameters.
@@ -63,13 +63,9 @@ func TestInsertTableToBigQuery(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	service, err := NewBigQueryService(jwtConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Set flush threshold to 5 so flush will happen immediately.
-	s, err := NewBigQueryStreamer(service, 5, 1*time.Second, 1*time.Second, 3)
+	// Set flush max delay threshold to 1 second so sub-streamers will flush
+	// almost immediately.
+	s, err := NewMultiStreamer(jwtConfig, 3, 5, 1*time.Second, 1*time.Second, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,21 +79,10 @@ func TestInsertTableToBigQuery(t *testing.T) {
 		s.QueueRow(*projectID, *datasetID, *tableID, jsonPayload)
 	}
 
-	// Override insertAll() function to call the original one and notify "flushed" via channel.
-	flushed := make(chan bool)
-	s.insertAll = func() {
-		s.insertAllToBigQuery()
-		flushed <- true
-	}
-
-	// Start the server and wait enough time for the server to flush.
-	timer := time.NewTimer(10 * time.Second)
+	// Start and wait a bit for sub-streamers to read inserted rows.
+	// Then, stop the multi-streamer, forcing all sub-streamers to flush.
 	go s.Start()
-	select {
-	case <-flushed:
-	case <-timer.C:
-		t.Error("insertAll() didn't happen fast enough")
-	}
+	time.Sleep(5 * time.Second)
 	s.Stop()
 
 	// Log BigQuery errors.

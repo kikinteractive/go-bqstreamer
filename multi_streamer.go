@@ -1,4 +1,4 @@
-package main
+package bqstreamer
 
 import (
 	"fmt"
@@ -8,10 +8,8 @@ import (
 	bigquery "google.golang.org/api/bigquery/v2"
 )
 
-// A BigQueryMultiStreamer manages several BigQueryStreamers.
-// The multi-streamer feeds rows to a single rowChannel and all sub-streamers
-// read from it together.
-//
+// A MultiStreamer operates multiple Streamers, also called workers, or sub-streamers.
+// The MultiStreamer feeds rows to a single rowChannel, and all sub-streamers read from it together.
 // This improves scalability by allowing a higher message throuhput.
 //
 // TODO Improve by managing a channel of sub-streamers, notifying
@@ -20,9 +18,9 @@ import (
 // will read and stream, etc.)
 // Right now they're all reading together simultaniously, reacing for messages.
 // See here: http://nesv.github.io/golang/2014/02/25/worker-queues-in-go.html
-type BigQueryMultiStreamer struct {
+type MultiStreamer struct {
 	// BigQuery sub-streamers (i.e. "workers") slice.
-	streamers []*BigQueryStreamer
+	streamers []*Streamer
 
 	// Channel for sending rows to background streamer.
 	rowChannel chan *row
@@ -34,32 +32,32 @@ type BigQueryMultiStreamer struct {
 	Errors chan error
 }
 
-// NewBigQueryMultiStreamer returns a new BigQueryMultiStreamer.
-func NewBigQueryMultiStreamer(
+// NewMultiStreamer returns a new MultiStreamer.
+func NewMultiStreamer(
 	jwtConfig *jwt.Config,
 	numStreamers int,
 	maxRows int,
 	maxDelay time.Duration,
 	sleepBeforeRetry time.Duration,
-	maxRetryInsert int) (*BigQueryMultiStreamer, error) {
+	maxRetryInsert int) (*MultiStreamer, error) {
 
 	// Create a new streamer, with standard service creation function.
 	// That function (service creation) is overridable for unit testing.
-	return newBigQueryMultiStreamer(
+	return newMultiStreamer(
 		NewBigQueryService, jwtConfig, numStreamers, maxRows, maxDelay, sleepBeforeRetry, maxRetryInsert)
 }
 
-// newBigQueryMultiStreamer returns a new BigQueryMultiStreamer.
+// newMultiStreamer returns a new MultiStreamer.
 // It recieves a NewBigQueryService function, which can be set as "always
 // return a nil service" for unit testing.
-func newBigQueryMultiStreamer(
+func newMultiStreamer(
 	newBigQueryService func(c *jwt.Config) (service *bigquery.Service, err error),
 	jwtConfig *jwt.Config,
 	numStreamers int,
 	maxRows int,
 	maxDelay time.Duration,
 	sleepBeforeRetry time.Duration,
-	maxRetryInsert int) (b *BigQueryMultiStreamer, err error) {
+	maxRetryInsert int) (b *MultiStreamer, err error) {
 
 	if numStreamers <= 0 {
 		err = fmt.Errorf("numStreamers must be positive int > 0")
@@ -77,7 +75,7 @@ func newBigQueryMultiStreamer(
 	rowChannel := make(chan *row, maxRows*numStreamers)
 	errors := make(chan error, errorBufferSize)
 
-	streamers := make([]*BigQueryStreamer, numStreamers)
+	streamers := make([]*Streamer, numStreamers)
 	for i := 0; i < numStreamers; i++ {
 		var service *bigquery.Service
 		service, err = newBigQueryService(jwtConfig)
@@ -85,7 +83,7 @@ func newBigQueryMultiStreamer(
 			return
 		}
 
-		streamers[i], err = NewBigQueryStreamer(service, maxRows, maxDelay, sleepBeforeRetry, maxRetryInsert)
+		streamers[i], err = NewStreamer(service, maxRows, maxDelay, sleepBeforeRetry, maxRetryInsert)
 		if err != nil {
 			return
 		}
@@ -94,7 +92,7 @@ func newBigQueryMultiStreamer(
 		streamers[i].Errors = errors
 	}
 
-	b = &BigQueryMultiStreamer{
+	b = &MultiStreamer{
 		streamers:  streamers,
 		rowChannel: rowChannel,
 		jwtConfig:  jwtConfig,
@@ -106,7 +104,7 @@ func newBigQueryMultiStreamer(
 
 // Start starts the sub-streamers, making them read from a common row channel,
 // and output to the same error channel.
-func (b *BigQueryMultiStreamer) Start() {
+func (b *MultiStreamer) Start() {
 	for _, s := range b.streamers {
 		go s.Start()
 	}
@@ -114,13 +112,13 @@ func (b *BigQueryMultiStreamer) Start() {
 
 // Stop stops all sub-streamers.
 // Note all sub-streamers will flush to BigQuery before stopping.
-func (b *BigQueryMultiStreamer) Stop() {
+func (b *MultiStreamer) Stop() {
 	for _, s := range b.streamers {
 		s.Stop()
 	}
 }
 
 // QueueRow queues a single row, which will be read and inserted by one of the sub-streamers.
-func (b *BigQueryMultiStreamer) QueueRow(projectID, datasetID, tableID string, jsonRow map[string]bigquery.JsonValue) {
+func (b *MultiStreamer) QueueRow(projectID, datasetID, tableID string, jsonRow map[string]bigquery.JsonValue) {
 	b.rowChannel <- &row{projectID, datasetID, tableID, jsonRow}
 }

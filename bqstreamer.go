@@ -1,4 +1,5 @@
-package main
+// Package bqstreamer implements a concurrent stream (bulk) inserter to Google BigQuery.
+package bqstreamer
 
 import (
 	"io/ioutil"
@@ -23,7 +24,8 @@ type row struct {
 }
 
 // NewJWTConfig returns a new JWT configuration from a JSON key,
-// acquired via https://console.developers.google.com
+// acquired via https://console.developers.google.com.
+//
 // A config is used to authenticate with Google OAuth2.
 func NewJWTConfig(keyPath string) (c *jwt.Config, err error) {
 	keyBytes, err := ioutil.ReadFile(keyPath)
@@ -40,7 +42,8 @@ func NewJWTConfig(keyPath string) (c *jwt.Config, err error) {
 }
 
 // NewBigQueryService returns a new BigQuery service (client), authenticated via OAuth2/JWT.
-// NOTE: This function contacts (authenticates with) Google OAuth2 service,
+//
+// NOTE: This function authenticates with Google OAuth2 service,
 // thus susceptible to network delays and blocks.
 func NewBigQueryService(c *jwt.Config) (service *bigquery.Service, err error) {
 	// Create *http.Client.

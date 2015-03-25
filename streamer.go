@@ -1,4 +1,4 @@
-package main
+package bqstreamer
 
 import (
 	"fmt"
@@ -10,9 +10,9 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
-// A BigQueryStreamer is a BigQuery streamer, queuing rows and streaming to
-// BigQuery in bulk by calling InsertAll().
-type BigQueryStreamer struct {
+// A Streamer is a BigQuery stream inserter,
+// queuing rows and stream inserts to BigQuery in bulk by calling InsertAll().
+type Streamer struct {
 	// BigQuery client connection.
 	service *bigquery.Service
 
@@ -63,13 +63,13 @@ type BigQueryStreamer struct {
 	insertTable func(projectId, datasetId, tableId string, t table) (r *bigquery.TableDataInsertAllResponse, err error)
 }
 
-// NewBigQueryStreamer returns a new BigQueryStreamer.
-func NewBigQueryStreamer(
+// NewStreamer returns a new Streamer.
+func NewStreamer(
 	service *bigquery.Service,
 	maxRows int,
 	maxDelay time.Duration,
 	sleepBeforeRetry time.Duration,
-	maxRetryInsert int) (b *BigQueryStreamer, err error) {
+	maxRetryInsert int) (b *Streamer, err error) {
 	// TODO add testing for nil bigquery.Service (this will intervene with tests though,
 	// maybe find a way to mock this type somehow?)
 
@@ -95,7 +95,7 @@ func NewBigQueryStreamer(
 		return
 	}
 
-	b = &BigQueryStreamer{
+	b = &Streamer{
 		service:          service,
 		rowChannel:       make(chan *row, maxRows),
 		rows:             make([]*row, maxRows),
@@ -120,13 +120,13 @@ func NewBigQueryStreamer(
 // startStreamer infinitely reads rows from rowChannel and queues them internaly.
 // It flushes to BigQuery when queue is filled (according to maxRows) or timer has expired (according to maxDelay).
 //
-// This function is assigned to BigQueryStreamer.Start member.
-// It is overridable so we can test BigQueryMultiStreamer without actually
+// This function is assigned to Streamer.Start member.
+// It is overridable so we can test MultiStreamer without actually
 // starting the streamers.
 //
 // Note the read-insert-flush loop will never stop, so this function should be
 // executed in a goroutine, and stopped via calling Stop().
-func (b *BigQueryStreamer) start() {
+func (b *Streamer) start() {
 	t := time.NewTimer(b.maxDelay)
 	toStop := false
 	for {
@@ -157,20 +157,20 @@ func (b *BigQueryStreamer) start() {
 }
 
 // stopStreamer sends a stop message to stop channel, causing Start() infinite loop to stop.
-func (b *BigQueryStreamer) stop() {
+func (b *Streamer) stop() {
 	b.stopChannel <- true
 }
 
 // flushAll streams all queued rows to BigQuery and resets rows queue by
 // creating a new queue.
 //
-// This function is assigned to BigQueryStreamer.flush member.
-// It is overridable so we can test BigQueryStreamer without actually flushing
+// This function is assigned to Streamer.flush member.
+// It is overridable so we can test Streamer without actually flushing
 // to BigQuery.
 //
 // TODO Consider making this public. If so, we should use a mutex to lock the object,
 // otherwise if the object is running in another goroutine it can call this in parallel.
-func (b *BigQueryStreamer) flushToBigQuery() {
+func (b *Streamer) flushToBigQuery() {
 	b.insertAll()
 
 	// Init (reset) a new rows queue - clear old one and re-allocate.
@@ -179,7 +179,7 @@ func (b *BigQueryStreamer) flushToBigQuery() {
 }
 
 // QueueRow sends a single row to the row channel, which will be queued and inserted in bulk with other queued rows.
-func (b *BigQueryStreamer) QueueRow(projectID, datasetID, tableID string, jsonRow map[string]bigquery.JsonValue) {
+func (b *Streamer) QueueRow(projectID, datasetID, tableID string, jsonRow map[string]bigquery.JsonValue) {
 	b.rowChannel <- &row{projectID, datasetID, tableID, jsonRow}
 }
 
@@ -218,7 +218,7 @@ func createTableIfNotExists(ps map[string]project, p, d, t string) {
 // insertAllToBigQuery inserts all rows from all tables to BigQuery.
 // Each table is inserted separately, according to BigQuery's requirements.
 // Insert errors are reported to error channel.
-func (b *BigQueryStreamer) insertAllToBigQuery() {
+func (b *Streamer) insertAllToBigQuery() {
 	// Sort rows by project->dataset->table
 	// Necessary because each InsertAll() has to be for a single table.
 	ps := map[string]project{}
@@ -289,9 +289,9 @@ func (b *BigQueryStreamer) insertAllToBigQuery() {
 
 // insertTableToBigQuery inserts a single table to BigQuery using BigQuery's InsertAll request.
 //
-// This function is assigned to BigQueryStreamer.insertTable member.
-// It is overridable so we can test BigQueryStreamer without actually inserting anythin to BigQuery.
-func (b *BigQueryStreamer) insertTableToBigQuery(projectID, datasetID, tableID string, t table) (
+// This function is assigned to Streamer.insertTable member.
+// It is overridable so we can test Streamer without actually inserting anythin to BigQuery.
+func (b *Streamer) insertTableToBigQuery(projectID, datasetID, tableID string, t table) (
 	r *bigquery.TableDataInsertAllResponse, err error) {
 	// Convert all rows to bigquery table rows.
 	rows := make([]*bigquery.TableDataInsertAllRequestRows, len(t))
@@ -316,7 +316,7 @@ func (b *BigQueryStreamer) insertTableToBigQuery(projectID, datasetID, tableID s
 // and returns true if insert should be retried.
 // See the following url for more info:
 // https://cloud.google.com/bigquery/troubleshooting-errors
-func (b *BigQueryStreamer) shouldRetryInsertAfterError(err error) (shouldRetry bool) {
+func (b *Streamer) shouldRetryInsertAfterError(err error) (shouldRetry bool) {
 	shouldRetry = false
 
 	if err != nil {
@@ -342,7 +342,7 @@ func (b *BigQueryStreamer) shouldRetryInsertAfterError(err error) (shouldRetry b
 // Rows are rejected if BigQuery insert response marked them as any string
 // other than "stopped".  See the following url for further info:
 // https://cloud.google.com/bigquery/streaming-data-into-bigquery#troubleshooting
-func (b *BigQueryStreamer) filterRejectedRows(
+func (b *Streamer) filterRejectedRows(
 	responses *bigquery.TableDataInsertAllResponse,
 	pID, dID, tID string,
 	d map[string]table) (rowsToFilter []int64) {
@@ -409,7 +409,7 @@ func (a int64Slice) Less(i, j int) bool { return a[i] < a[j] }
 // Table filtering is done in place, thus the original table is also changed.
 //
 // The table is returned in addition to mutating the given table argument for idiom's sake.
-func (b *BigQueryStreamer) filterRowsFromTable(indexes []int64, t table) table {
+func (b *Streamer) filterRowsFromTable(indexes []int64, t table) table {
 	// Deletion is done in-place, so we copy & sort given indexes,
 	// then delete in reverse order. Reverse order is necessary for not
 	// breaking the order of elements to remove in the slice.
