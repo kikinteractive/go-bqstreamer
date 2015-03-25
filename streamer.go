@@ -8,6 +8,7 @@ import (
 	"github.com/dchest/uniuri"
 	bigquery "google.golang.org/api/bigquery/v2"
 	"google.golang.org/api/googleapi"
+	"gopkg.in/validator.v2"
 )
 
 // A Streamer is a BigQuery stream inserter,
@@ -24,20 +25,21 @@ type Streamer struct {
 	rows []*row
 
 	// Rows index to queue next row into.
+	//
 	// TODO using a row index is probably not the best way.
 	// Maybe we should instead create a slice with len = 0, cap = 500 and use
 	// len() instead.
 	rowIndex int // 0
 
 	// Max delay between flushes to BigQuery.
-	maxDelay time.Duration
+	MaxDelay time.Duration `validate:"min=1"`
 
 	// Sleep delay after a rejected insert and before retry.
-	sleepBeforeRetry time.Duration
+	SleepBeforeRetry time.Duration `validate:"min=1"`
 
 	// Maximum retry insert attempts for non-rejected row insert errors.
 	// e.g. GoogleAPI HTTP errors, generic HTTP errors, etc.
-	maxRetryInsert int
+	MaxRetryInsert int `validate:"min=0"`
 
 	// Shutdown channel to stop Start() execution.
 	stopChannel chan bool
@@ -75,23 +77,8 @@ func NewStreamer(
 
 	// TODO maybe return error if maxRows > 500?
 
-	if maxRows <= 0 {
-		err = fmt.Errorf("maxRows must be positive int > 0")
-		return
-	}
-
-	if maxDelay <= 0*time.Nanosecond {
-		err = fmt.Errorf("maxDelay must be positive time.Duration >= 1 * time.Nanosecond")
-		return
-	}
-
-	if sleepBeforeRetry <= 0*time.Nanosecond {
-		err = fmt.Errorf("sleepBeforeRetry must be positive time.Duration >= 1 * time.Nanosecond")
-		return
-	}
-
-	if maxRetryInsert < 0 {
-		err = fmt.Errorf("maxRetryInsert must be non-negative int >= 0")
+	err = validator.Valid(maxRows, "min=1")
+	if err != nil {
 		return
 	}
 
@@ -100,11 +87,16 @@ func NewStreamer(
 		rowChannel:       make(chan *row, maxRows),
 		rows:             make([]*row, maxRows),
 		rowIndex:         0,
-		maxDelay:         maxDelay,
-		sleepBeforeRetry: sleepBeforeRetry,
-		maxRetryInsert:   maxRetryInsert,
+		MaxDelay:         maxDelay,
+		SleepBeforeRetry: sleepBeforeRetry,
+		MaxRetryInsert:   maxRetryInsert,
 		stopChannel:      make(chan bool),
 		Errors:           make(chan error, errorBufferSize),
+	}
+
+	err = validator.Validate(b)
+	if err != nil {
+		return
 	}
 
 	// Assign function defaults.
@@ -127,7 +119,7 @@ func NewStreamer(
 // Note the read-insert-flush loop will never stop, so this function should be
 // executed in a goroutine, and stopped via calling Stop().
 func (b *Streamer) start() {
-	t := time.NewTimer(b.maxDelay)
+	t := time.NewTimer(b.MaxDelay)
 	toStop := false
 	for {
 		// Flush and reset timer when one of the following signals (channels) fire:
@@ -148,7 +140,7 @@ func (b *Streamer) start() {
 		b.flush()
 
 		if !toStop {
-			t.Reset(b.maxDelay)
+			t.Reset(b.MaxDelay)
 		} else {
 			t.Stop()
 			return
@@ -247,7 +239,7 @@ func (b *Streamer) insertAllToBigQuery() {
 				numRetries := 0
 				for {
 					numRetries++
-					if numRetries > b.maxRetryInsert {
+					if numRetries > b.MaxRetryInsert {
 						b.Errors <- fmt.Errorf(
 							"Insert table %s retried %d times, dropping insert and moving on",
 							tID, numRetries)
@@ -264,7 +256,7 @@ func (b *Streamer) insertAllToBigQuery() {
 						// Retry after HTTP errors usually mean to retry after a certain pause.
 						// See the following link for more info:
 						// https://cloud.google.com/bigquery/troubleshooting-errors
-						time.Sleep(b.sleepBeforeRetry)
+						time.Sleep(b.SleepBeforeRetry)
 						continue
 					}
 

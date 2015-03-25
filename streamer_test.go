@@ -66,16 +66,16 @@ func TestNewStreamer(t *testing.T) {
 		t.Errorf("rowIndex != 0 (is %d)", s.rowIndex)
 	}
 
-	if s.maxDelay != 1*time.Second {
-		t.Errorf("maxDelay != 1 second (is %.2f seconds)", s.maxDelay.Seconds())
+	if s.MaxDelay != 1*time.Second {
+		t.Errorf("maxDelay != 1 second (is %.2f seconds)", s.MaxDelay.Seconds())
 	}
 
-	if s.sleepBeforeRetry != 1*time.Second {
-		t.Errorf("sleepBeforeRetry != 1 second (is %.2f seconds)", s.sleepBeforeRetry.Seconds())
+	if s.SleepBeforeRetry != 1*time.Second {
+		t.Errorf("sleepBeforeRetry != 1 second (is %.2f seconds)", s.SleepBeforeRetry.Seconds())
 	}
 
-	if s.maxRetryInsert != 10 {
-		t.Errorf("maxRetryInsert != 10 (is %d)", s.maxRetryInsert)
+	if s.MaxRetryInsert != 10 {
+		t.Errorf("maxRetryInsert != 10 (is %d)", s.MaxRetryInsert)
 	}
 
 	if s.stopChannel == nil {
@@ -202,14 +202,14 @@ func TestMaxDelayFlushCall(t *testing.T) {
 	// Start streamer and measure time it should take to flush by maxDelay.
 	// Add a small interval to timer to avoid failing when our timer expired
 	// just a moment before streamer's timer.
-	timer := time.NewTimer(s.maxDelay + 1*time.Millisecond)
+	timer := time.NewTimer(s.MaxDelay + 1*time.Millisecond)
 	go s.Start()
 
 	// Fail if no flush happened in maxDelay time.
 	select {
 	case <-flushed:
 	case <-timer.C:
-		t.Errorf("flush() wasn't called in maxDelay time (%.2f seconds)", s.maxDelay.Seconds())
+		t.Errorf("flush() wasn't called in maxDelay time (%.2f seconds)", s.MaxDelay.Seconds())
 	}
 
 	s.Stop()
