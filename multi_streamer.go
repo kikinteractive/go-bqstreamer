@@ -1,11 +1,11 @@
 package bqstreamer
 
 import (
-	"fmt"
 	"time"
 
 	"golang.org/x/oauth2/jwt"
 	bigquery "google.golang.org/api/bigquery/v2"
+	"gopkg.in/validator.v2"
 )
 
 // A MultiStreamer operates multiple Streamers, also called workers, or sub-streamers.
@@ -59,13 +59,13 @@ func newMultiStreamer(
 	sleepBeforeRetry time.Duration,
 	maxRetryInsert int) (b *MultiStreamer, err error) {
 
-	if numStreamers <= 0 {
-		err = fmt.Errorf("numStreamers must be positive int > 0")
+	err = validator.Valid(numStreamers, "min=1")
+	if err != nil {
 		return
 	}
 
-	if maxRows <= 0 {
-		err = fmt.Errorf("maxRows must be positive int > 0")
+	err = validator.Valid(maxRows, "min=1")
+	if err != nil {
 		return
 	}
 

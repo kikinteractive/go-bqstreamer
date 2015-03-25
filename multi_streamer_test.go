@@ -96,7 +96,7 @@ func TestNewMultiStreamer(t *testing.T) {
 			t.Errorf("Streamer %d rows not set to value sent to multi-streamer", i)
 		}
 
-		if st.maxDelay != 1*time.Second {
+		if st.MaxDelay != 1*time.Second {
 			t.Errorf("Streamer %d max delay not set to value sent to multi-streamer", i)
 		}
 	}
