@@ -1,0 +1,11 @@
+cache: apt
+
+language: go
+go:
+  - 1.4.1
+
+install:
+  - go get -t -v ./...
+
+script:
+  - go test -v -cover ./...
