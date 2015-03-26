@@ -1,79 +1,73 @@
 # BigQuery Streamer
 
-Stream insert data into BigQuery *fast* and *concurrently*, using `InsertAll()`.
+[Stream insert][stream insert] data into [BigQuery][bigquery] *fast* and *concurrently*, using `InsertAll()`.
 
-## How?
+## Features
 
-There are two primary types used, `Streamer` and `MultiStreamer`.
-
-A `Streamer` is a single worker which reads rows, queues them, and inserts them
-in bulk into BigQuery once a certain threshold is reached.
-
-A `MultiStreamer` operates multiple `Streamer`s concurrently. It reads rows and
-distributes them to the `Streamers`.
+- Inserts multiple rows in bulk.
+- Uses configurable multiple workers (i.e. goroutines) to queue and insert rows.
+- Production ready, and thoroughly tested. We - at [Rounds][rounds] - are using it in our data gathering workflow.
+- BigQuery errors are sent to a unified channel so you can read and decide how to handle them.
 
 ## Getting Started
 
-1. Install Go, version should be at least 1.3. We recommend using [gvm][gvm] to
-   manage your Go versions.
+1. Install Go, version should be at least 1.3. We recommend using [gvm][gvm] to manage your Go versions.
 2. Execute `go get -t ./...` to download all necessary packages.
-3. Run this example `main.go`:
+3. Copy and run one of the examples: [MultiStreamer][multi-streamer example] and [Streamer][streamer example].
 
-```go
-package main
+## How Does It Work?
 
-import (
-    "log"
-	"google.golang.org/api/bigquery/v2"
-    "github.com/rounds/go-bqstreamer"
-)
+There are two types you can use: `Streamer` and `MultiStreamer`.
 
-func main() {
-    // Init OAuth2/JWT. See the following URLs for more info:
-    // https://cloud.google.com/bigquery/authorization
-    // https://developers.google.com/console/help/new/#generatingoauth2
-	jwtConfig, err := bqstreamer.NewJWTConfig("path_to_key.json")
-	if err != nil {
-		log.Fatalln(err)
-	}
+### Streamer
 
-    numStreamers := 10  // Number of concurrent streamers.
-    maxRows := 500  // Row threshold to use for each streamer, before insert.
-    maxDelay := 1  //  Time threshold to use for each streamer, before insert.
-    sleepBeforeRetry := 1  // Time to wait between failed retries.
-    maxRetryInsert := 10 // Maximum amount of failed retry attempts before discarding rows and moving on.
+A `Streamer` is a single worker which reads rows, queues them, and inserts them
+(also called "flushing") in bulk into BigQuery once a certain threshold is reached.
+Thresholds can be either an amount of rows queued, or based on time - inserting once a certain time has passed.
 
-    // Init a new multi-streamer.
-    ms, err = bqstreamer.NewMultiStreamer(
-            jwtConfig, numStreamer, maxRows, maxDelay, sleepBeforeRetry, maxRetryInsert)
+This provides flush control, inserting in set sizes and quickly enough.
+Please note Google has [quota policies on size and frequency of inserts][quota policy].
 
-    // Start multi-streamer and workers.
-	ms.Start()
-	defer ms.Stop()
+In addition, the Streamer knows to handle BigQuery server erros (HTTP 500 and the like),
+and attempts to retry insertions several times on such failures.
 
-    // Worker errors will be reported to this channel.
-	StreamerShutdownErrorsChannel = make(chan bool)
-	go func () {
-        var err error
+It also sends errors on an error channel, which can be read an handled.
 
-        readErrors := true
-        for readErrors {
-            select {
-            case <-StreamerShutdownErrorsChannel:
-                readErrors = false
-            case err = <-Streamer.Errors:
-                log.Println(err)
-            }
-        }
-    }
-	defer func() { StreamerShutdownErrorsChannel <- true }()
+### MultiStreamer
 
-    Streamer.QueueRow(
-        "project-id", "dataset-id", "table-id",
-        map[string]bigquery.JsonValue{"key": "value"}
-    )
-}
+A `MultiStreamer` operates multiple `Streamer`s concurrently (i.e. workers).
+It reads rows and distributes them to the `Streamers`.
+
+This allows insertion with a higher insert throughput,
+where numerous workers are queueing rows and inserting concurrenctly.
+
+Like `Streamer`, errors are reported from each worker and sent to a unified error channel,
+where you can decide to read and handle them if necessary.
+
+## Contribute
+
+Please check the [issues][issues] page which might have some TODOs.
+Feel free to file new bugs and ask for improvements.  [We welcome pull requests!][pull requests]
+
+### Test
+
+```bash
+# Run unit tests, and check coverage.
+$ go test -v -cover
+
+# Run integration tests. This requires an active project, dataset and pem key.
+# Make sure you edit the project, dataset, and table name in the .sh file.
+$ ./integration_test.sh
+$ ./multi_integration_test.sh
 ```
 
 
+[stream insert]: https://cloud.google.com/bigquery/streaming-data-into-bigquery
+[bigquery]: https://cloud.google.com/bigquery/
+[rounds]: http://rounds.com/
 [gvm]: https://github.com/moovweb/gvm
+[multi-streamer example]: multi_streamer_example_test.go
+[streamer example]: streamer_example_test.go
+[quota policy]: https://cloud.google.com/bigquery/streaming-data-into-bigquery#quota
+[issues]: https://github.com/rounds/go-bqstreamer/issues
+[pull requests]: http://epicpullrequests.tumblr.com/
