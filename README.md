@@ -1,4 +1,4 @@
-# BigQuery Streamer [![GoDoc][godoc image]][godoc] [![Build Status][build-status]][travis]
+# BigQuery Streamer [![GoDoc][godoc image]][godoc] [![Build Status][travis image]][travis]
 
 [Stream insert][stream insert] data into [BigQuery][bigquery] *fast* and *concurrently*, using `InsertAll()`.
 
