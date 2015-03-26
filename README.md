@@ -1,4 +1,4 @@
-# BigQuery Streamer
+# BigQuery Streamer [![Build Status][travis image]][travis]
 
 [Stream insert][stream insert] data into [BigQuery][bigquery] *fast* and *concurrently*, using `InsertAll()`.
 
@@ -63,6 +63,8 @@ $ ./multi_integration_test.sh
 ```
 
 
+[travis image]: https://travis-ci.org/rounds/go-bqstreamer.svg
+[travis]: https://travis-ci.org/rounds/go-bqstreamer
 [stream insert]: https://cloud.google.com/bigquery/streaming-data-into-bigquery
 [bigquery]: https://cloud.google.com/bigquery/
 [rounds]: http://rounds.com/
