@@ -1,4 +1,4 @@
-# BigQuery Streamer [![GoDoc][godoc image]][godoc] [![Build Status][travis image]][travis]
+# BigQuery Streamer [![GoDoc][godoc image]][godoc] [![Build Status][travis image]][travis] [![Coverage Status][coveralls image]][coveralls]
 
 [Stream insert][stream insert] data into [BigQuery][bigquery] *fast* and *concurrently*, using `InsertAll()`.
 
@@ -67,6 +67,8 @@ $ ./multi_integration_test.sh
 [godoc image]: https://godoc.org/github.com/rounds/go-bqstreamer?status.svg
 [travis image]: https://travis-ci.org/rounds/go-bqstreamer.svg
 [travis]: https://travis-ci.org/rounds/go-bqstreamer
+[coveralls image]: https://coveralls.io/repos/rounds/go-bqstreamer/badge.svg
+[coveralls]: https://coveralls.io/r/rounds/go-bqstreamer
 [stream insert]: https://cloud.google.com/bigquery/streaming-data-into-bigquery
 [bigquery]: https://cloud.google.com/bigquery/
 [rounds]: http://rounds.com/
