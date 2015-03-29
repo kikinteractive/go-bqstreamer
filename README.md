@@ -6,7 +6,7 @@
 
 - Inserts multiple rows in bulk.
 - Uses configurable multiple workers (i.e. goroutines) to queue and insert rows.
-- Production ready, and thoroughly tested. We - at [Rounds][rounds] - are using it in our data gathering workflow.
+- Production ready, and thoroughly tested. We - at [Rounds][rounds] - are [using it in our data gathering workflow][blog post].
 - BigQuery errors are sent to a unified channel so you can read and decide how to handle them.
 
 ## Getting Started
@@ -72,6 +72,7 @@ $ ./multi_integration_test.sh
 [stream insert]: https://cloud.google.com/bigquery/streaming-data-into-bigquery
 [bigquery]: https://cloud.google.com/bigquery/
 [rounds]: http://rounds.com/
+[blog post]: http://rounds.com/blog/collecting-user-data-and-usage/
 [gvm]: https://github.com/moovweb/gvm
 [credentials]: https://cloud.google.com/bigquery/authorization
 [multi-streamer example]: multi_streamer_example_test.go
