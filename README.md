@@ -23,13 +23,13 @@ There are two types you can use: `Streamer` and `MultiStreamer`.
 ### Streamer
 
 A `Streamer` is a single worker which reads rows, queues them, and inserts them
-(also called "flushing") in bulk into BigQuery once a certain threshold is reached.
+(also called *flushing*) in bulk into BigQuery once a certain threshold is reached.
 Thresholds can be either an amount of rows queued, or based on time - inserting once a certain time has passed.
 
 This provides flush control, inserting in set sizes and quickly enough.
 Please note Google has [quota policies on size and frequency of inserts][quota policy].
 
-In addition, the Streamer knows to handle BigQuery server erros (HTTP 500 and the like),
+In addition, the Streamer knows how to handle BigQuery server errors (HTTP 500 and the like),
 and attempts to retry insertions several times on such failures.
 
 It also sends errors on an error channel, which can be read an handled.
@@ -65,17 +65,23 @@ $ ./multi_integration_test.sh
 
 [godoc]: https://godoc.org/github.com/rounds/go-bqstreamer
 [godoc image]: https://godoc.org/github.com/rounds/go-bqstreamer?status.svg
+
 [travis image]: https://travis-ci.org/rounds/go-bqstreamer.svg
 [travis]: https://travis-ci.org/rounds/go-bqstreamer
+
 [coveralls image]: https://coveralls.io/repos/rounds/go-bqstreamer/badge.svg
 [coveralls]: https://coveralls.io/r/rounds/go-bqstreamer
+
 [stream insert]: https://cloud.google.com/bigquery/streaming-data-into-bigquery
 [bigquery]: https://cloud.google.com/bigquery/
+[quota policy]: https://cloud.google.com/bigquery/streaming-data-into-bigquery#quota
+[credentials]: https://cloud.google.com/bigquery/authorization
+
 [rounds]: http://rounds.com/
 [blog post]: http://rounds.com/blog/collecting-user-data-and-usage/
+[issues]: https://github.com/rounds/go-bqstreamer/issues
+
 [gvm]: https://github.com/moovweb/gvm
-[credentials]: https://cloud.google.com/bigquery/authorization
+
 [multi-streamer example]: multi_streamer_example_test.go
 [streamer example]: streamer_example_test.go
-[quota policy]: https://cloud.google.com/bigquery/streaming-data-into-bigquery#quota
-[issues]: https://github.com/rounds/go-bqstreamer/issues

@@ -38,6 +38,9 @@ func ExampleStreamer() {
 
 	// Init a new streamer.
 	s, err := NewStreamer(service, maxRows, maxDelay, sleepBeforeRetry, maxRetryInsert)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	// Start multi-streamer and workers.
 	// A Streamer (NOT a MultiStreamer) is blocking,
