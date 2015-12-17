@@ -1,9 +1,12 @@
 package bqstreamer
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2/jwt"
 	bigquery "google.golang.org/api/bigquery/v2"
 )
@@ -20,100 +23,56 @@ var returnNil = func(t *jwt.Config) (*bigquery.Service, error) { return nil, nil
 
 // TestNewStreamer tests creating a new MultiStreamer.
 func TestNewMultiStreamer(t *testing.T) {
+	t.Parallel()
+
+	assert := assert.New(t)
+	require := require.New(t)
+
 	// Test giving bad arguments.
 	s, err := newMultiStreamer(returnNil, nil, 0, 10, 1*time.Second, 1*time.Second, 10)
-	if err == nil {
-		t.Error("New multi-streamer with 0 sub-streamers should've failed")
-	}
-
+	assert.Error(err)
 	s, err = newMultiStreamer(returnNil, nil, -1, 10, 1*time.Second, 1*time.Second, 10)
-	if err == nil {
-		t.Error("New multi-streamer with -1 sub-streamers should've failed")
-	}
-
+	assert.Error(err)
 	s, err = newMultiStreamer(returnNil, nil, 2, 0, 1*time.Second, 1*time.Second, 10)
-	if err == nil {
-		t.Error("New multi-streamer with 0 max rows should've failed")
-	}
-
+	assert.Error(err)
 	s, err = newMultiStreamer(returnNil, nil, 2, -1, 1*time.Second, 1*time.Second, 10)
-	if err == nil {
-		t.Error("New multi-streamer with -1 max rows should've failed")
-	}
-
+	assert.Error(err)
 	s, err = newMultiStreamer(returnNil, nil, 2, 10, 0, 1*time.Second, 10)
-	if err == nil {
-		t.Error("New multi-streamer with 0 max delay should've failed")
-	}
-
+	assert.Error(err)
 	s, err = newMultiStreamer(returnNil, nil, 2, 10, -1*time.Nanosecond, 1*time.Second, 10)
-	if err == nil {
-		t.Error("New multi-streamer with -1 nanosecond max delay should've failed")
-	}
-
+	assert.Error(err)
 	s, err = newMultiStreamer(returnNil, nil, 2, 10, 1*time.Nanosecond, -1*time.Second, 10)
-	if err == nil {
-		t.Error("New multi-streamer with -1 second sleep before retry should've failed")
-	}
+	assert.Error(err)
 
-	// Test giving good arguments.
+	// Test valid arguments.
 	s, err = newMultiStreamer(returnNil, nil, 50, 10, 1*time.Second, 1*time.Second, 10)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.NoError(err)
+	assert.Empty(s.rowChannel)
+	assert.Equal(50*10, cap(s.rowChannel))
+	assert.NotNil(s.Errors)
+	assert.Empty(s.Errors)
 
-	if s.rowChannel == nil {
-		t.Error("Row channel is nil")
-	}
-	if len(s.rowChannel) != 0 {
-		t.Error("Row channel isn't empty")
-	}
-	if cap(s.rowChannel) != 50*10 {
-		t.Errorf("cap(rowChannel) != 10 (is %d)", len(s.rowChannel))
-	}
-
-	if s.Errors == nil {
-		t.Error("Error channel is nil")
-	}
-	if len(s.Errors) != 0 {
-		t.Error("Error channel isn't empty")
-	}
-
-	for i, st := range s.streamers {
-		if st == nil {
-			t.Fatalf("Streamer %d is nil", i+1)
-		}
-
-		if st.Errors != s.Errors {
-			t.Errorf("Streamer %d error channel wasn't set to multi-streamer's error channel", i)
-		}
-
-		if st.rowChannel != s.rowChannel {
-			t.Errorf("Streamer %d row channel wasn't set to multi-streamer's row channel", i)
-		}
-
-		if len(st.rows) != 10 {
-			t.Errorf("Streamer %d rows not set to value sent to multi-streamer", i)
-		}
-
-		if st.MaxDelay != 1*time.Second {
-			t.Errorf("Streamer %d max delay not set to value sent to multi-streamer", i)
-		}
+	for _, st := range s.streamers {
+		require.NotNil(st)
+		require.Equal(st.Errors, s.Errors)
+		require.Equal(st.rowChannel, s.rowChannel)
+		require.Len(st.rows, 10)
+		require.Equal(1*time.Second, st.MaxDelay)
 	}
 }
 
 // TestStartStreamer tests calling Start() starts all sub-streamers.
 func TestStartMultiStreamer(t *testing.T) {
+	t.Parallel()
+
+	require := require.New(t)
+
 	s, err := newMultiStreamer(returnNil, nil, 50, 10, 1*time.Second, 1*time.Second, 10)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(err)
 
 	// Override sub-streamers.Start() function to just notify they had started.
-	started := make(chan bool, 51)
-	start := func() {
-		started <- true
-	}
+	started := make(chan struct{}, 51)
+	start := func() { started <- struct{}{} }
 
 	for _, st := range s.streamers {
 		st.Start = start
@@ -121,34 +80,33 @@ func TestStartMultiStreamer(t *testing.T) {
 
 	// Start multi-streamers and check all sub-streamers have been started.
 	s.Start()
-	timer := time.NewTimer(1 * time.Millisecond)
 	for i := 0; i < 50; i++ {
 		select {
 		case <-started:
-		case <-timer.C:
-			t.Fatalf("Streamer %d wasn't started fast enough", i)
+		case <-time.After(1 * time.Millisecond):
+			require.Fail("Streamer %d wasn't started fast enough", i)
 		}
 	}
 
 	select {
 	default:
 	case <-started:
-		t.Error("More sub-streamers have been started than necessary")
+		require.Fail("More sub-streamers have been started than necessary")
 	}
 }
 
 // TestStopMultiStreamer tests calling Stop() stops all sub-streamers.
 func TestStopMultiStreamer(t *testing.T) {
+	t.Parallel()
+
+	require := require.New(t)
+
 	s, err := newMultiStreamer(returnNil, nil, 50, 10, 1*time.Second, 1*time.Second, 10)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(err)
 
 	// Override sub-streamers.Stop() function to notify they had stopped.
-	stopped := make(chan bool, 51)
-	stop := func() {
-		stopped <- true
-	}
+	stopped := make(chan struct{}, 51)
+	stop := func() { stopped <- struct{}{} }
 
 	for _, st := range s.streamers {
 		st.Stop = stop
@@ -160,29 +118,31 @@ func TestStopMultiStreamer(t *testing.T) {
 	s.Stop()
 	time.Sleep(1 * time.Millisecond)
 
-	timer := time.NewTimer(1 * time.Millisecond)
 	for i := 0; i < 50; i++ {
 		select {
 		case <-stopped:
-		case <-timer.C:
-			t.Fatalf("Streamer %d wasn't stopped fast enough", i)
+		case <-time.After(1 * time.Millisecond):
+			require.Fail("Streamer %d wasn't stopped fast enough", i)
 		}
 	}
 
 	select {
 	default:
 	case <-stopped:
-		t.Error("More sub-streamers have been stopped than necessary")
+		require.Fail("More sub-streamers have been stopped than necessary")
 	}
 }
 
 // TestQueueRowMultiStreamer queues 4 rows to 2 tables, 2 datasets,
 // and 2 projects (total 4 rows) and tests if they were queued by the sub-streamers.
 func TestQueueRowMultiStreamer(t *testing.T) {
+	t.Parallel()
+
+	assert := assert.New(t)
+	require := require.New(t)
+
 	s, err := newMultiStreamer(returnNil, nil, 5, 10, 1*time.Second, 1*time.Second, 10)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(err)
 
 	// Override sub-streamers.flush() function to not flush, since we're
 	// only testing queueing rows in this test.
@@ -212,7 +172,5 @@ func TestQueueRowMultiStreamer(t *testing.T) {
 		}
 	}
 
-	if c != 4 {
-		t.Errorf("Queued rows not as expected - should've been 4 queued rows (was %d)", c)
-	}
+	assert.Equal(4, c, fmt.Sprintf("Queued rows not as expected - should've been 4 queued rows (was %d)", c))
 }

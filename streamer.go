@@ -42,7 +42,7 @@ type Streamer struct {
 	MaxRetryInsert int `validate:"min=0"`
 
 	// Shutdown channel to stop Start() execution.
-	stopChannel chan bool
+	stopChannel chan struct{}
 
 	// Errors are reported to this channel.
 	Errors chan error
@@ -90,7 +90,7 @@ func NewStreamer(
 		MaxDelay:         maxDelay,
 		SleepBeforeRetry: sleepBeforeRetry,
 		MaxRetryInsert:   maxRetryInsert,
-		stopChannel:      make(chan bool),
+		stopChannel:      make(chan struct{}),
 		Errors:           make(chan error, errorBufferSize),
 	}
 
@@ -119,13 +119,13 @@ func NewStreamer(
 // Note the read-insert-flush loop will never stop, so this function should be
 // executed in a goroutine, and stopped via calling Stop().
 func (b *Streamer) start() {
-	t := time.NewTimer(b.MaxDelay)
-	toStop := false
 	for {
 		// Flush and reset timer when one of the following signals (channels) fire:
 		select {
-		case toStop = <-b.stopChannel:
-		case <-t.C:
+		case <-b.stopChannel:
+			b.flush()
+			return
+		case <-time.After(b.MaxDelay):
 		case r := <-b.rowChannel:
 			// Insert row to queue.
 			b.rows[b.rowIndex] = r
@@ -138,19 +138,12 @@ func (b *Streamer) start() {
 		}
 
 		b.flush()
-
-		if !toStop {
-			t.Reset(b.MaxDelay)
-		} else {
-			t.Stop()
-			return
-		}
 	}
 }
 
 // stopStreamer sends a stop message to stop channel, causing Start() infinite loop to stop.
 func (b *Streamer) stop() {
-	b.stopChannel <- true
+	b.stopChannel <- struct{}{}
 }
 
 // flushAll streams all queued rows to BigQuery and resets rows queue by
