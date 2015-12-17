@@ -24,4 +24,7 @@ install:
   - go get -t -v ./...
 
 script:
+  - go test -coverprofile=bqstreamer.coverprofile ./
+
+after_success:
   - $HOME/gopath/bin/goveralls -service=travis-ci
