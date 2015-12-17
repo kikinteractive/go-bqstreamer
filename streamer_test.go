@@ -190,7 +190,7 @@ func TestMaxRowsFlushCall(t *testing.T) {
 	// Test if flushing happened almost immediately, forced by rows queue being filled.
 	select {
 	case <-flushed:
-	case <-time.After(10 * time.Microsecond):
+	case <-time.After(1 * time.Second):
 		assert.Fail("flush() wasn't called by rows queue getting filled")
 	}
 
@@ -584,7 +584,7 @@ func TestInsertAllWithServerErrorResponse(t *testing.T) {
 	select {
 	case <-flushed:
 		assert.Fail("retry insert happened another time after test was finished")
-	case <-time.After(1 * time.Microsecond):
+	case <-time.After(1 * time.Second):
 	}
 }
 
@@ -646,7 +646,7 @@ func TestInsertAllWithNonServerErrorResponse(t *testing.T) {
 	select {
 	case <-flushed:
 		assert.Fail("retry insert happened even though server error != 503")
-	case <-time.After(1 * time.Microsecond):
+	case <-time.After(1 * time.Second):
 	}
 }
 
@@ -836,7 +836,7 @@ func TestInsertAllWithRejectedResponse(t *testing.T) {
 	// Test insertTable() is called again after rejected rows response.
 	select {
 	case <-flushed:
-	case <-time.After(1 * time.Microsecond):
+	case <-time.After(1 * time.Second):
 		assert.Fail("retry insert didn't happen fast enough after rejected rows response")
 	}
 
