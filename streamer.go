@@ -1,7 +1,6 @@
 package bqstreamer
 
 import (
-	"fmt"
 	"sort"
 	"time"
 
@@ -230,16 +229,17 @@ func (b *Streamer) insertAllToBigQuery() {
 				// Insert to a single table in bulk, and retry insert on certain errors.
 				// Keep on retrying until successful.
 				numRetries := 0
+
+			FilterRows:
 				for {
 					numRetries++
-					if numRetries > b.MaxRetryInsert {
-						b.Errors <- fmt.Errorf(
-							"Insert table %s retried %d times, dropping insert and moving on",
-							tID, numRetries)
-						break
-					} else if len(d[tID]) == 0 {
-						b.Errors <- fmt.Errorf("All rows from table %s have been filtered, moving on", tID)
-						break
+					switch {
+					case numRetries > b.MaxRetryInsert:
+						b.Errors <- newTooManyFailedInsertRetriesError(numRetries, pID, dID, tID)
+						break FilterRows
+					case len(d[tID]) == 0:
+						b.Errors <- newAllRowsRejectedError(pID, dID, tID)
+						break FilterRows
 					}
 
 					responses, err := b.insertTable(pID, dID, tID, d[tID])
@@ -358,12 +358,7 @@ func (b *Streamer) filterRejectedRows(
 					}
 
 					// Log all errors besides "stopped" ones.
-					b.Errors <- fmt.Errorf(
-						"%s.%s.%s.row[%d]: %s in %s: %s: %s",
-						pID, dID, tID,
-						rowErrors.Index,
-						rowError.Reason, rowError.Location, rowError.Message,
-						d[tID][rowErrors.Index].jsonValue)
+					b.Errors <- newRowError(rowError, rowErrors.Index, pID, dID, tID, d[tID][rowErrors.Index].jsonValue)
 				}
 			}
 		}

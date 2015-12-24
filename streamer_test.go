@@ -700,6 +700,9 @@ func TestMaxRetryInsert(t *testing.T) {
 	defer s.Stop()
 
 	// Test each insert logged an error.
+	gerr := googleapi.Error{Code: 503, Message: "m", Body: "b", Errors: []googleapi.ErrorItem{
+		googleapi.ErrorItem{Reason: "r1", Message: "m1"},
+		googleapi.ErrorItem{Reason: "r2", Message: "m2"}}}
 	for i := 0; i < 3; i++ {
 		select {
 		case <-time.After(1 * time.Second):
@@ -715,7 +718,8 @@ func TestMaxRetryInsert(t *testing.T) {
 			select {
 			case err, ok := <-s.Errors:
 				assert.True(ok, "Error channel is closed")
-				t.Log("Mocked errors (this is ok):", err)
+				assert.IsType(&googleapi.Error{}, err)
+				assert.EqualError(err, gerr.Error())
 			default:
 				assert.Fail(fmt.Sprintf("Error %d is missing from error channel", i))
 			}
@@ -735,7 +739,8 @@ func TestMaxRetryInsert(t *testing.T) {
 	select {
 	case err, ok := <-s.Errors:
 		assert.True(ok, "Error channel is closed")
-		t.Log("Mocked errors (this is ok):", err)
+		assert.IsType(&TooManyFailedInsertRetriesError{}, err)
+		assert.EqualError(err, "Insert table p.d.t retried 4 times, dropping insert and moving on")
 	default:
 		assert.Fail("Error \"too many retries\" is missing from error channel")
 	}
@@ -925,10 +930,56 @@ func TestInsertwithAllRowsRejected(t *testing.T) {
 	select {
 	case err, ok := <-s.Errors:
 		assert.True(ok, "Error channel is closed")
-		t.Log("Mocked errors (this is ok):", err)
+		assert.IsType(&RowError{}, err)
+		assert.Equal(`p.d.t.row[0]: invalid in l00: m00: {"k0":"v0"}`, err.Error())
+	default:
+		assert.Fail("Error \"row[0]\" is missing from error channel")
+	}
+	select {
+	case err, ok := <-s.Errors:
+		assert.True(ok, "Error channel is closed")
+		assert.IsType(&RowError{}, err)
+		assert.Equal(`p.d.t.row[1]: invalid in l10: m10: {"k1":"v1"}`, err.Error())
+	default:
+		assert.Fail("Error \"row[1]\" is missing from error channel")
+	}
+	select {
+	case err, ok := <-s.Errors:
+		assert.True(ok, "Error channel is closed")
+		assert.IsType(&RowError{}, err)
+		assert.Equal(`p.d.t.row[2]: invalid in l20: m20: {"k2":"v2"}`, err.Error())
+	default:
+		assert.Fail("Error \"row[2]\" is missing from error channel")
+	}
+	select {
+	case err, ok := <-s.Errors:
+		assert.True(ok, "Error channel is closed")
+		assert.IsType(&RowError{}, err)
+		assert.Equal(`p.d.t.row[3]: invalid in l30: m30: {"k3":"v3"}`, err.Error())
+	default:
+		assert.Fail("Error \"row[3]\" is missing from error channel")
+	}
+	select {
+	case err, ok := <-s.Errors:
+		assert.True(ok, "Error channel is closed")
+		assert.IsType(&RowError{}, err)
+		assert.Equal(`p.d.t.row[4]: invalid in l40: m40: {"k4":"v4"}`, err.Error())
+	default:
+		assert.Fail("Error \"row[4]\" is missing from error channel")
+	}
+
+	// Last error should indicate all rows have been rejected,
+	// causing the insert to not be retried.
+	select {
+	case err, ok := <-s.Errors:
+		assert.True(ok, "Error channel is closed")
+		assert.IsType(&AllRowsRejectedError{}, err)
+		assert.Equal(`All rows from p.d.t have been rejected, moving on`, err.Error())
 	default:
 		assert.Fail("Error \"all rows rejected\" is missing from error channel")
 	}
+
+	assert.Equal(0, len(s.Errors))
 }
 
 // TestInsertAllLogErrors inserts 5 rows and mocks 3 response errors for 3 of these rows,
@@ -1013,13 +1064,38 @@ func TestInsertAllLogErrors(t *testing.T) {
 	s.Stop()
 
 	// Test 4 errors were fetched: 2 for row 1, and each for row 3, 5.
-	for i := 0; i < 4; i++ {
-		select {
-		case err, ok := <-s.Errors:
-			assert.True(ok, "Error channel is closed")
-			t.Log("Mocked errors (this is ok):", err)
-		default:
-			require.Fail("Error %d is missing from error channel", i)
-		}
+	select {
+	case err, ok := <-s.Errors:
+		assert.True(ok, "Error channel is closed")
+		assert.IsType(&RowError{}, err)
+		assert.Equal(`p1.d1.t1.row[0]: r11 in l11: m11: {"k0":"v0"}`, err.Error())
+	default:
+		assert.Fail("Error \"row[0]\" error 1 is missing from error channel")
 	}
+	select {
+	case err, ok := <-s.Errors:
+		assert.True(ok, "Error channel is closed")
+		assert.IsType(&RowError{}, err)
+		assert.Equal(`p1.d1.t1.row[0]: r12 in l12: m12: {"k0":"v0"}`, err.Error())
+	default:
+		assert.Fail("Error \"row[0]\" error 2 is missing from error channel")
+	}
+	select {
+	case err, ok := <-s.Errors:
+		assert.True(ok, "Error channel is closed")
+		assert.IsType(&RowError{}, err)
+		assert.Equal(`p1.d1.t1.row[2]: r3 in l3: m3: {"k2":"v2"}`, err.Error())
+	default:
+		assert.Fail("Error \"row[2]\" is missing from error channel")
+	}
+	select {
+	case err, ok := <-s.Errors:
+		assert.True(ok, "Error channel is closed")
+		assert.IsType(&RowError{}, err)
+		assert.Equal(`p1.d1.t1.row[4]: r5 in l5: m5: {"k4":"v4"}`, err.Error())
+	default:
+		assert.Fail("Error \"row[4]\" is missing from error channel")
+	}
+
+	assert.Equal(0, len(s.Errors))
 }
