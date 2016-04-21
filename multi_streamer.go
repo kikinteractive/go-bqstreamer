@@ -90,7 +90,6 @@ func newMultiStreamer(
 
 		streamers[i].rowChannel = rowChannel
 		streamers[i].Errors = errors
-		//println(streamers[i].RowIndex)
 	}
 
 	b = &MultiStreamer{
