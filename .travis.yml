@@ -1,5 +1,3 @@
-cache: apt
-
 language: go
 go:
   - tip
@@ -11,12 +9,10 @@ go:
   - 1.5
   
 before_install:
-  - go get github.com/axw/gocov/gocov
-  - go get github.com/mattn/goveralls
-  - if ! go get code.google.com/p/go.tools/cmd/cover; then go get golang.org/x/tools/cmd/cover; fi
+  - go get golang.org/x/tools/cmd/cover
 
 script:
-  - go test -coverprofile=bqstreamer.coverprofile ./
+  - go test -coverprofile=coverage.txt ./
 
 after_success:
-  - $HOME/gopath/bin/goveralls -service=travis-ci
+  - bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"
