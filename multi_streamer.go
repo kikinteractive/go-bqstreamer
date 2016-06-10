@@ -122,3 +122,11 @@ func (b *MultiStreamer) Stop() {
 func (b *MultiStreamer) QueueRow(projectID, datasetID, tableID string, jsonRow map[string]bigquery.JsonValue) {
 	b.rowChannel <- &row{projectID, datasetID, tableID, jsonRow}
 }
+
+func (b *MultiStreamer) GetQueueLen() int {
+	var queuelen int
+	for _, s := range b.streamers {
+		queuelen += s.rowIndex
+	}
+	return queuelen
+}
