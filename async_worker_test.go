@@ -420,7 +420,7 @@ func TestAsyncWorkerInsertErrors(t *testing.T) {
 
 			select {
 			case <-inserted:
-			case <-time.After(1 * time.Second):
+			case <-time.After(3 * time.Second):
 				require.Fail("insert wasn't called fast enough", strconv.Itoa(i))
 			}
 		}(i)
