@@ -1,65 +1,67 @@
-# BigQuery Streamer [![GoDoc][godoc image]][godoc] [![Build Status][travis image]][travis] [![Coverage Status][codecov image]][codecov]
+# BigQuery Streamer <img src="bigquery.png" alt="BigQuery" width="32"> [![GoDoc][godoc image]][godoc] [![Build Status][travis image]][travis] [![Coverage Status][codecov image]][codecov]
 
-[Stream insert][stream insert] data into [BigQuery][bigquery] *fast* and *concurrently*, using `InsertAll()`.
+[Stream insert][stream insert] data into [BigQuery][bigquery] *fast* and *concurrently*,
+using [`InsertAll()`][InsertAll()].
 
 ## Features
 
-- Inserts multiple rows in bulk.
-- Uses configurable multiple workers (i.e. goroutines) to queue and insert rows.
+- Insert rows from multiple tables, datasets, and projects, and insert them
+  bulk. No need to manage data structures and sort rows by tables -
+  bqstreamer does it for you.
+- Multiple background workers (i.e. goroutines) to enqueue and insert rows.
+- Insert can be done in a blocking or in the background (asynchronously).
+- Perform insert operations in predefined set sizes, according to BigQuery's
+  [quota policy][quota policy].
+- Handle and retry BigQuery server errors.
+- Backoff interval between failed insert operations.
+- Error reporting.
 - Production ready, and thoroughly tested. We - at [Rounds][rounds] - are [using it in our data gathering workflow][blog post].
-- BigQuery errors are sent to a unified channel so you can read and decide how to handle them.
+- Thorough testing and documentation for great good!
 
 ## Getting Started
 
-1. Install Go, version should be at least 1.3. We recommend using [gvm][gvm] to manage your Go versions.
-2. Execute `go get -t ./...` to download all necessary packages.
-3. [Acquire Google OAuth2/JWT credentials][credentials], so you can connect to BigQuery.
-4. Copy and run one of the examples: [MultiStreamer][multi-streamer example] and [Streamer][streamer example].
+1. Install Go, version should be at least 1.5.
+2. Clone this repository and download dependencies.
+3. [Acquire Google OAuth2/JWT credentials][credentials], so you can authenticate with BigQuery.
+4. Try the examples in the [GoDoc][godoc].
 
 ## How Does It Work?
 
-There are two types you can use: `Streamer` and `MultiStreamer`.
+There are two types of inserters you can use:
 
-### Streamer
+ 1. `SyncWorker`, which is a single blocking (synchronous) worker.
+  1. It enqueues rows and performs insert operations in a blocking manner.
+ 1. `AsyncWorkerGroup`, which employes multiple background `SyncWorker`s.
+  1. The `AsyncWorkerGroup` enqueues rows, and its background workers pull and
+     insert in a fan-out model.
+  1. An insert operation is executed according to row amount or time thresholds
+      for each background worker.
+  1. Errors are reported to an error channel for processing by the user.
+  1. This provides a higher insert throughput for larger scale scenarios.
 
-A `Streamer` is a single worker which reads rows, queues them, and inserts them
-(also called *flushing*) in bulk into BigQuery once a certain threshold is reached.
-Thresholds can be either an amount of rows queued, or based on time - inserting once a certain time has passed.
+## Examples
 
-This provides flush control, inserting in set sizes and quickly enough.
-Please note Google has [quota policies on size and frequency of inserts][quota policy].
-
-In addition, the Streamer knows how to handle BigQuery server errors (HTTP 500 and the like),
-and attempts to retry insertions several times on such failures.
-
-It also sends errors on an error channel, which can be read an handled.
-
-### MultiStreamer
-
-A `MultiStreamer` operates multiple `Streamer`s concurrently (i.e. workers).
-It reads rows and distributes them to the `Streamers`.
-
-This allows insertion with a higher insert throughput,
-where numerous workers are queueing rows and inserting concurrenctly.
-
-Like `Streamer`, errors are reported from each worker and sent to a unified error channel,
-where you can decide to read and handle them if necessary.
+Check the GoDoc [examples][examples] section.
 
 ## Contribute
 
-Please check the [issues][issues] page which might have some TODOs.
-Feel free to file new bugs and ask for improvements. We welcome pull requests!
+ 1. Please check the [issues][issues] page.
+ 1. File new bugs and ask for improvements.
+ 1. Pull requests welcome!
 
 ### Test
 
 ```bash
-# Run unit tests, and check coverage.
-$ go test -v -cover
+# Run unit tests and check coverage.
+$ make test
 
-# Run integration tests. This requires an active project, dataset and pem key.
-# Make sure you edit the project, dataset, and table name in the .sh file.
-$ ./integration_test.sh
-$ ./multi_integration_test.sh
+# Run integration tests.
+# This requires an active project, dataset and pem key.
+$ export BQSTREAMER_PROJECT=my-project
+$ export BQSTREAMER_DATASET=my-dataset
+$ export BQSTREAMER_TABLE=my-table
+$ export BQSTREAMER_KEY=my-key.json
+$ make testintegration
 ```
 
 
@@ -74,14 +76,11 @@ $ ./multi_integration_test.sh
 
 [stream insert]: https://cloud.google.com/bigquery/streaming-data-into-bigquery
 [bigquery]: https://cloud.google.com/bigquery/
-[quota policy]: https://cloud.google.com/bigquery/streaming-data-into-bigquery#quota
+[InsertAll()]: https://cloud.google.com/bigquery/docs/reference/v2/tabledata/insertAll
+[quota policy]: https://cloud.google.com/bigquery/quota-policy#streaminginserts
 [credentials]: https://cloud.google.com/bigquery/authorization
 
 [rounds]: http://rounds.com/
 [blog post]: http://rounds.com/blog/collecting-user-data-and-usage/
+[examples]: https://godoc.org/github.com/rounds/go-bqstreamer#pkg-examples
 [issues]: https://github.com/rounds/go-bqstreamer/issues
-
-[gvm]: https://github.com/moovweb/gvm
-
-[multi-streamer example]: multi_streamer_example_test.go
-[streamer example]: streamer_example_test.go
