@@ -1,6 +1,6 @@
-.PHONY: deps test testintegration
+.PHONY: default
 
-.default: deps test
+default: deps test
 
 deps:
 	go get -t
