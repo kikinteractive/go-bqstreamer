@@ -21,9 +21,10 @@ using [`InsertAll()`][InsertAll()].
 ## Getting Started
 
 1. Install Go, version should be at least 1.5.
-2. Clone this repository and download dependencies.
-3. [Acquire Google OAuth2/JWT credentials][credentials], so you can authenticate with BigQuery.
-4. Try the examples in the [GoDoc][godoc].
+1. Clone this repository and download dependencies:
+  1. Version v2: `go get gopkg.in/rounds/go-bqstreamer.v2`
+  1. Version v1: `go get gopkg.in/rounds/go-bqstreamer.v1`
+1. [Acquire Google OAuth2/JWT credentials][credentials], so you can authenticate with BigQuery.
 
 ## How Does It Work?
 
