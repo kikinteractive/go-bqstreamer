@@ -23,7 +23,7 @@ type SyncWorker struct {
 	service *bigquery.Service
 
 	// Internal list to queue rows for stream insert.
-	row []Row
+	rows []Row
 
 	// Sleep delay after a rejected insert and before a retry insert attempt.
 	retryInterval time.Duration
@@ -52,7 +52,7 @@ func NewSyncWorker(client *http.Client, options ...SyncOptionFunc) (*SyncWorker,
 
 	w := SyncWorker{
 		service:       service,
-		row:           make([]Row, 0, rowSize),
+		rows:          make([]Row, 0, rowSize),
 		retryInterval: DefaultSyncRetryInterval,
 		maxRetries:    DefaultSyncMaxRetries,
 	}
@@ -69,7 +69,13 @@ func NewSyncWorker(client *http.Client, options ...SyncOptionFunc) (*SyncWorker,
 
 // Enqueue enqueues rows for insert in bulk.
 func (w *SyncWorker) Enqueue(row Row) {
-	w.row = append(w.row, row)
+	w.rows = append(w.rows, row)
+}
+
+// RowLen returns the number of enqueued rows in the worker,
+// which haven't been inserted into BigQuery yet.
+func (w *SyncWorker) RowLen() int {
+	return len(w.rows)
 }
 
 // Insert executes an insert operation in bulk.
@@ -98,12 +104,12 @@ func (w *SyncWorker) InsertWithRetry() *InsertErrors {
 // then inserts them to their respectable tables in BigQuery using InsertAll().
 func (w *SyncWorker) insertAll(insertFunc func(projectID, datasetID, tableID string, tbl table) *TableInsertErrors) *InsertErrors {
 	// Reset rows queue when finished.
-	defer func() { w.row = w.row[:0] }()
+	defer func() { w.rows = w.rows[:0] }()
 
 	// Sort rows by project -> dataset -> table heirarchy.
 	// Necessary because each InsertAll() request has to be for a single table.
 	ps := projects{}
-	for _, r := range w.row {
+	for _, r := range w.rows {
 		p, d, t := r.ProjectID, r.DatasetID, r.TableID
 
 		// Create project, dataset and table if uninitalized.

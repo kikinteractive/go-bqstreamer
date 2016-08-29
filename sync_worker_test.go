@@ -41,15 +41,15 @@ func TestSyncWorkerNewSyncWorker(t *testing.T) {
 	// Test valid arguments.
 	w, err := NewSyncWorker(&http.Client{}, SetSyncMaxRetries(10), SetSyncRetryInterval(1*time.Second))
 	require.NoError(err)
-	assert.NotNil(w.row)
-	assert.Empty(w.row, 0)
-	assert.Equal(rowSize, cap(w.row))
+	assert.NotNil(w.rows)
+	assert.Empty(w.rows, 0)
+	assert.Equal(rowSize, cap(w.rows))
 	assert.Equal(10, w.maxRetries)
 	assert.Equal(1*time.Second, w.retryInterval)
 }
 
 // TestSyncWorkerEnqueue tests queueing a row.
-func TestSyncWorkerEnqueue(t *testing.T) {
+func TestSyncWorkerEnqueueAndRowLen(t *testing.T) {
 	t.Parallel()
 
 	assert := assert.New(t)
@@ -62,9 +62,10 @@ func TestSyncWorkerEnqueue(t *testing.T) {
 	w.Enqueue(NewRowWithID("p", "d", "t", "r2", map[string]bigquery.JsonValue{"k2": "v2"}))
 	w.Enqueue(NewRowWithID("p", "d", "t", "r3", map[string]bigquery.JsonValue{"k3": "v3"}))
 
-	require.Len(w.row, 3)
+	require.Len(w.rows, 3)
+	assert.Equal(3, w.RowLen())
 	assert.Equal(
-		w.row,
+		w.rows,
 		[]Row{
 			NewRowWithID("p", "d", "t", "r1", map[string]bigquery.JsonValue{"k1": "v1"}),
 			NewRowWithID("p", "d", "t", "r2", map[string]bigquery.JsonValue{"k2": "v2"}),
@@ -167,12 +168,12 @@ func TestSyncWorkerInsertAll(t *testing.T) {
 		}
 
 		assert.Len(inserted, 0, funcName) // Test no more inserts happened.
-		assert.Len(w.row, 0, funcName)    // Test rows were reset after insert
+		assert.Len(w.rows, 0, funcName)   // Test rows were reset after insert
 
 		// Test rows slice wasn't re-allocated with a larger size.
 		// This make sure we're keeping the same row slice size throught the
 		// Worker's life.
-		assert.Equal(rowSize, cap(w.row), funcName)
+		assert.Equal(rowSize, cap(w.rows), funcName)
 
 		// Test no insert
 		tables := insertErrs.All()
@@ -306,12 +307,12 @@ func TestSyncSkipInvalidRows(t *testing.T) {
 	}
 
 	assert.Len(inserted, 0) // Test no more inserts happened.
-	assert.Len(w.row, 0)    // Test rows were reset after insert.
+	assert.Len(w.rows, 0)   // Test rows were reset after insert.
 
 	// Test rows slice wasn't re-allocated with a larger size.
 	// This make sure we're keeping the same row slice size throught the
 	// Worker's life.
-	assert.Equal(rowSize, cap(w.row))
+	assert.Equal(rowSize, cap(w.rows))
 
 	// Test insert
 	tables := insertErrs.All()
@@ -417,12 +418,12 @@ func TestSyncIgnoreUnknownValues(t *testing.T) {
 	}
 
 	assert.Len(inserted, 0) // Test no more inserts happened.
-	assert.Len(w.row, 0)    // Test rows were reset after insert.
+	assert.Len(w.rows, 0)   // Test rows were reset after insert.
 
 	// Test rows slice wasn't re-allocated with a larger size.
 	// This make sure we're keeping the same row slice size throught the
 	// Worker's life.
-	assert.Equal(rowSize, cap(w.row))
+	assert.Equal(rowSize, cap(w.rows))
 
 	// Test insert
 	tables := insertErrs.All()
@@ -605,12 +606,12 @@ func TestSyncWorkerInsertAllWithServerErrorResponse(t *testing.T) {
 	}
 
 	assert.Len(inserted, 0) // Test no more inserts happened.
-	assert.Len(w.row, 0)    // Test rows were reset after insert.
+	assert.Len(w.rows, 0)   // Test rows were reset after insert.
 
 	// Test rows slice wasn't re-allocated with a larger size.
 	// This make sure we're keeping the same row slice size throught the
 	// Worker's life.
-	assert.Equal(rowSize, cap(w.row))
+	assert.Equal(rowSize, cap(w.rows))
 
 	// Test insert
 	tables := insertErrs.All()
@@ -744,12 +745,12 @@ func TestSyncWorkerInsertAllWithNonServerErrorResponse(t *testing.T) {
 	}
 
 	assert.Len(inserted, 0) // Test no more inserts happened.
-	assert.Len(w.row, 0)    // Test rows were reset after insert.
+	assert.Len(w.rows, 0)   // Test rows were reset after insert.
 
 	// Test rows slice wasn't re-allocated with a larger size.
 	// This make sure we're keeping the same row slice size throught the
 	// Worker's life.
-	assert.Equal(rowSize, cap(w.row))
+	assert.Equal(rowSize, cap(w.rows))
 
 	// A 501 error should cause an insertError with a 501 error
 	// to be returned, along with the result (which is empty for this test).
@@ -898,7 +899,7 @@ func TestSyncWorkerMaxRetryInsert(t *testing.T) {
 	}
 
 	assert.Len(inserted, 0) // Test no more inserts happened.
-	assert.Len(w.row, 0)    // Test rows were reset after insert.
+	assert.Len(w.rows, 0)   // Test rows were reset after insert.
 
 	tables := insertErrs.All()
 	require.Len(tables, 1)
