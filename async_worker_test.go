@@ -123,8 +123,8 @@ func TestAsyncWorkerEnqueue(t *testing.T) {
 	// enqueued in the internal Worker row slice.
 	w.Start()
 	time.Sleep(100 * time.Millisecond)
-	require.Len(w.worker.row, 1)
-	require.Equal(NewRowWithID("p", "d", "t", "id0", map[string]bigquery.JsonValue{"k0": "v0"}), w.worker.row[0])
+	require.Len(w.worker.rows, 1)
+	require.Equal(NewRowWithID("p", "d", "t", "id0", map[string]bigquery.JsonValue{"k0": "v0"}), w.worker.rows[0])
 
 	// Enqueue four additional rows, and test they were "mock" inserted.
 	w.rowChan <- NewRowWithID("p", "d", "t", "id1", map[string]bigquery.JsonValue{"k1": "v1"})
@@ -132,7 +132,7 @@ func TestAsyncWorkerEnqueue(t *testing.T) {
 	w.rowChan <- NewRowWithID("p", "d", "t", "id3", map[string]bigquery.JsonValue{"k3": "v3"})
 	w.rowChan <- NewRowWithID("p", "d", "t", "id4", map[string]bigquery.JsonValue{"k4": "v4"})
 	time.Sleep(100 * time.Millisecond)
-	require.Len(w.worker.row, 5)
+	require.Len(w.worker.rows, 5)
 }
 
 // TestAsyncWorkerMaxDelay tests Worker executes an insert to BigQuery

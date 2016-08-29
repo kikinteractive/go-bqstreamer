@@ -58,7 +58,7 @@ func (w *asyncWorker) Start() {
 				w.worker.Enqueue(r)
 
 				// Don't insert yet if not enough rows have been enqueued.
-				if len(w.worker.row) < w.maxRows {
+				if len(w.worker.rows) < w.maxRows {
 					continue
 				}
 
@@ -81,7 +81,7 @@ func (w *asyncWorker) Close() <-chan struct{} {
 // using the internal SyncWorker.
 func (w *asyncWorker) insert() {
 	// No-op if no lines have been enqueued.
-	if len(w.worker.row) == 0 {
+	if len(w.worker.rows) == 0 {
 		return
 	}
 
