@@ -101,7 +101,7 @@ func TestSyncWorkerInsertAll(t *testing.T) {
 				// Mock "insert row" to table: Create project, dataset and table
 				// if uninitalized.
 				initTableIfNotExists(ps, pID, dID, tID)
-				ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}})
+				ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}, []string{}})
 			}
 
 			// Notify that this table was mock "inserted".
@@ -190,35 +190,35 @@ func TestSyncWorkerInsertAll(t *testing.T) {
 				"p1": project{
 					"d1": dataset{
 						"t1": table{
-							&bigquery.TableDataInsertAllRequestRows{"p1d1t1k0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p1d1t1k1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p1d1t1k2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p1d1t1k3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p1d1t1k4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d1t1k0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d1t1k1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d1t1k2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d1t1k3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d1t1k4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}, []string{}},
 						},
 						"t2": table{
-							&bigquery.TableDataInsertAllRequestRows{"p1d1t2k0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p1d1t2k1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p1d1t2k2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p1d1t2k3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p1d1t2k4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d1t2k0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d1t2k1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d1t2k2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d1t2k3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d1t2k4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}, []string{}},
 						}},
 					"d2": dataset{
 						"t1": table{
-							&bigquery.TableDataInsertAllRequestRows{"p1d2t1k0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p1d2t1k1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p1d2t1k2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p1d2t1k3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p1d2t1k4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d2t1k0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d2t1k1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d2t1k2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d2t1k3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p1d2t1k4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}, []string{}},
 						}}},
 				"p2": project{
 					"d1": dataset{
 						"t1": table{
-							&bigquery.TableDataInsertAllRequestRows{"p2d1t1k0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p2d1t1k1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p2d1t1k2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p2d1t1k3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}},
-							&bigquery.TableDataInsertAllRequestRows{"p2d1t1k4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p2d1t1k0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p2d1t1k1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p2d1t1k2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p2d1t1k3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}, []string{}},
+							&bigquery.TableDataInsertAllRequestRows{"p2d1t1k4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}, []string{}},
 						}}}},
 			ps, funcName)
 	}
@@ -253,7 +253,7 @@ func TestSyncSkipInvalidRows(t *testing.T) {
 				// Mock "insert row" to table: Create project, dataset and table
 				// if uninitalized.
 				initTableIfNotExists(ps, pID, dID, tID)
-				ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}})
+				ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}, []string{}})
 			}
 
 			res := http.Response{
@@ -326,11 +326,11 @@ func TestSyncSkipInvalidRows(t *testing.T) {
 			"p": project{
 				"d": dataset{
 					"t": table{
-						&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}, []string{}},
 					}}}},
 		ps)
 }
@@ -364,7 +364,7 @@ func TestSyncIgnoreUnknownValues(t *testing.T) {
 				// Mock "insert row" to table: Create project, dataset and table
 				// if uninitalized.
 				initTableIfNotExists(ps, pID, dID, tID)
-				ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}})
+				ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}, []string{}})
 			}
 
 			res := http.Response{
@@ -437,11 +437,11 @@ func TestSyncIgnoreUnknownValues(t *testing.T) {
 			"p": project{
 				"d": dataset{
 					"t": table{
-						&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}, []string{}},
 					}}}},
 		ps)
 }
@@ -545,7 +545,7 @@ func TestSyncWorkerInsertAllWithServerErrorResponse(t *testing.T) {
 					// Mock "insert row" to table: Create project, dataset and table
 					// if uninitalized.
 					initTableIfNotExists(ps, pID, dID, tID)
-					ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}})
+					ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}, []string{}})
 				}
 
 				res = http.Response{
@@ -629,11 +629,11 @@ func TestSyncWorkerInsertAllWithServerErrorResponse(t *testing.T) {
 			"p": project{
 				"d": dataset{
 					"t": table{
-						&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}, []string{}},
 					}}}},
 		ps)
 }
@@ -696,7 +696,7 @@ func TestSyncWorkerInsertAllWithNonServerErrorResponse(t *testing.T) {
 					// Mock "insert row" to table: Create project, dataset and table
 					// if uninitalized.
 					initTableIfNotExists(ps, pID, dID, tID)
-					ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}})
+					ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}, []string{}})
 				}
 			default:
 				require.Fail("Insert was called more than once")
@@ -767,11 +767,11 @@ func TestSyncWorkerInsertAllWithNonServerErrorResponse(t *testing.T) {
 			"p": project{
 				"d": dataset{
 					"t": table{
-						&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}, []string{}},
 					}}}},
 		ps)
 }
@@ -835,18 +835,18 @@ func TestSyncWorkerMaxRetryInsert(t *testing.T) {
 					// Mock "insert row" to table: Create project, dataset and table
 					// if uninitalized.
 					initTableIfNotExists(ps, pID, dID, tID)
-					ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}})
+					ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}, []string{}})
 				}
 				assert.Equal(
 					projects{
 						"p": project{
 							"d": dataset{
 								"t": table{
-									&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}},
-									&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}},
-									&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}},
-									&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}},
-									&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}},
+									&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}, []string{}},
+									&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}, []string{}},
+									&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}, []string{}},
+									&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}, []string{}},
+									&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}, []string{}},
 								}}}},
 					ps)
 			} else {

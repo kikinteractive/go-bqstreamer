@@ -164,7 +164,7 @@ func TestAsyncWorkerMaxDelay(t *testing.T) {
 					// Mock "insert row" to table: Create project, dataset and table
 					// if uninitalized.
 					initTableIfNotExists(ps, pID, dID, tID)
-					ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}})
+					ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}, []string{}})
 				}
 
 				res = http.Response{
@@ -221,11 +221,11 @@ func TestAsyncWorkerMaxDelay(t *testing.T) {
 			"p": project{
 				"d": dataset{
 					"t": table{
-						&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}, []string{}},
 					}}}},
 		ps)
 }
@@ -259,7 +259,7 @@ func TestAsyncWorkerMaxRows(t *testing.T) {
 					// Mock "insert row" to table: Create project, dataset and table
 					// if uninitalized.
 					initTableIfNotExists(ps, pID, dID, tID)
-					ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}})
+					ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}, []string{}})
 				}
 
 				res = http.Response{
@@ -315,11 +315,11 @@ func TestAsyncWorkerMaxRows(t *testing.T) {
 			"p": project{
 				"d": dataset{
 					"t": table{
-						&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}},
-						&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id0", map[string]bigquery.JsonValue{"k0": "v0"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id1", map[string]bigquery.JsonValue{"k1": "v1"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id2", map[string]bigquery.JsonValue{"k2": "v2"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id3", map[string]bigquery.JsonValue{"k3": "v3"}, []string{}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id4", map[string]bigquery.JsonValue{"k4": "v4"}, []string{}, []string{}},
 					}}}},
 		ps)
 }
