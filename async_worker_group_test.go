@@ -167,6 +167,7 @@ func TestAsyncWorkerGroupQueueRowStreamer(t *testing.T) {
 
 	// Start and close AsyncWorkerGroup in order to force insert.
 	m.Start()
+	time.Sleep(100 * time.Millisecond)
 	m.Close()
 
 	// TestAsyncWorkerGroup for inserted rows by comparing tracked Projects.
