@@ -3,6 +3,7 @@
 package bqstreamer
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -146,16 +147,22 @@ func (w *SyncWorker) insertAll(insertFunc func(projectID, datasetID, tableID str
 // TODO cache bigquery service instead of creating a new one every insertTable() call
 // TODO add support for SkipInvalidRows, IgnoreUnknownValues
 func (w *SyncWorker) insertTable(projectID, datasetID, tableID string, tbl table) *TableInsertErrors {
-	res, err := bigquery.NewTabledataService(w.service).
-		InsertAll(
-			projectID, datasetID, tableID,
-			&bigquery.TableDataInsertAllRequest{
-				Kind:                "bigquery#tableDataInsertAllRequest",
-				Rows:                tbl,
-				IgnoreUnknownValues: w.ignoreUnknownValues,
-				SkipInvalidRows:     w.skipInvalidRows,
-			}).
-		Do()
+	tabledataInsertAllCall := bigquery.NewTabledataService(w.service).InsertAll(
+		projectID, datasetID, tableID,
+		&bigquery.TableDataInsertAllRequest{
+			Kind:                "bigquery#tableDataInsertAllRequest",
+			Rows:                tbl,
+			IgnoreUnknownValues: w.ignoreUnknownValues,
+			SkipInvalidRows:     w.skipInvalidRows,
+		})
+
+	// Set a timeout on the bigtable insert
+	// TODO make this configurable by passing through a context
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tabledataInsertAllCall.Context(ctx)
+	res, err := tabledataInsertAllCall.Do()
 
 	var rows []*bigquery.TableDataInsertAllResponseInsertErrors
 	if res != nil {
