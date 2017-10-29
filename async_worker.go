@@ -40,6 +40,7 @@ func (w *asyncWorker) Start() {
 			close(stopped)
 		}(w.closedChan)
 
+		timer := time.NewTimer(w.maxDelay)
 		for {
 			// Perform an insert operation and reset timer
 			// when one of the following signals is triggered:
@@ -48,10 +49,12 @@ func (w *asyncWorker) Start() {
 				// Worker should close.
 				w.insert()
 				return
-			case <-time.After(w.maxDelay):
+			case <-timer.C:
 				// Time delay between previous insert operation
 				// has passed
 				w.insert()
+				// Reset timer
+				timer.Reset(w.maxDelay)
 			case r := <-w.rowChan:
 				// A row has been enqueued.
 				// Insert row to queue.
@@ -61,8 +64,14 @@ func (w *asyncWorker) Start() {
 				if len(w.worker.rows) < w.maxRows {
 					continue
 				}
-
 				w.insert()
+				// Reset timer
+				// Since we do not know if the timer fired yet, we need to explicitly
+				// stop it and drain the channel
+				if !timer.Stop() {
+					<-timer.C
+				}
+				timer.Reset(w.maxDelay)
 			}
 		}
 	}(w)
