@@ -15,15 +15,15 @@ using [`InsertAll()`][InsertAll()].
 - Handle and retry BigQuery server errors.
 - Backoff interval between failed insert operations.
 - Error reporting.
-- Production ready, and thoroughly tested. We - at [Rounds][rounds] - are [using it in our data gathering workflow][blog post].
+- Production ready, and thoroughly tested. We - at [Rounds][rounds] (now acquired by [Kik][kik]) - are [using it in our data gathering workflow][blog post].
 - Thorough testing and documentation for great good!
 
 ## Getting Started
 
 1. Install Go, version should be at least 1.5.
 1. Clone this repository and download dependencies:
-  1. Version v2: `go get gopkg.in/rounds/go-bqstreamer.v2`
-  1. Version v1: `go get gopkg.in/rounds/go-bqstreamer.v1`
+  1. Version v2: `go get gopkg.in/kikinteractive/go-bqstreamer.v2`
+  1. Version v1: `go get gopkg.in/kikinteractive/go-bqstreamer.v1`
 1. [Acquire Google OAuth2/JWT credentials][credentials], so you can authenticate with BigQuery.
 
 ## How Does It Work?
@@ -66,14 +66,8 @@ $ make testintegration
 ```
 
 
-[godoc]: https://godoc.org/github.com/rounds/go-bqstreamer
-[godoc image]: https://godoc.org/github.com/rounds/go-bqstreamer?status.svg
-
-[travis image]: https://travis-ci.org/rounds/go-bqstreamer.svg
-[travis]: https://travis-ci.org/rounds/go-bqstreamer
-
-[codecov image]: https://codecov.io/gh/rounds/go-bqstreamer/branch/master/graph/badge.svg
-[codecov]: https://codecov.io/gh/rounds/go-bqstreamer
+[godoc]: https://godoc.org/github.com/kikinteractive/go-bqstreamer
+[godoc image]: https://godoc.org/github.com/kikinteractive/go-bqstreamer?status.svg
 
 [stream insert]: https://cloud.google.com/bigquery/streaming-data-into-bigquery
 [bigquery]: https://cloud.google.com/bigquery/
@@ -82,6 +76,7 @@ $ make testintegration
 [credentials]: https://cloud.google.com/bigquery/authorization
 
 [rounds]: http://rounds.com/
-[blog post]: http://rounds.com/blog/collecting-user-data-and-usage/
-[examples]: https://godoc.org/github.com/rounds/go-bqstreamer#pkg-examples
-[issues]: https://github.com/rounds/go-bqstreamer/issues
+[kik]: http://kik.com/
+[blog post]: https://medium.com/@oryband/collecting-user-data-and-usage-ffa84c4dba34
+[examples]: https://godoc.org/github.com/kikinteractive/go-bqstreamer#pkg-examples
+[issues]: https://github.com/kikinteractive/go-bqstreamer/issues
