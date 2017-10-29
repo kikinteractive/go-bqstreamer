@@ -1,4 +1,7 @@
-# BigQuery Streamer <img src="bigquery.png" alt="BigQuery" width="32"> [![GoDoc][godoc image]][godoc] [![Build Status][travis image]][travis] [![Coverage Status][codecov image]][codecov]
+Kik and me ([@oryband](http://github.com/oryband)) are no longer maintaining this repository.
+Thanks for all the contributions. You are welcome to fork and continue development.
+
+# BigQuery Streamer <img src="bigquery.png" alt="BigQuery" width="32"> [![GoDoc][godoc image]][godoc]
 
 [Stream insert][stream insert] data into [BigQuery][bigquery] *fast* and *concurrently*,
 using [`InsertAll()`][InsertAll()].
