@@ -143,7 +143,7 @@ func TestAsyncWorkerGroupQueueRowStreamer(t *testing.T) {
 				// Mock "insert row" to table: Create project, dataset and table
 				// if uninitalized.
 				initTableIfNotExists(ps, pID, dID, tID)
-				ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}})
+				ps[pID][dID][tID] = append(ps[pID][dID][tID], &bigquery.TableDataInsertAllRequestRows{tr.InsertId, tr.Json, []string{}, []string{}})
 			}
 
 			res := http.Response{
@@ -167,6 +167,7 @@ func TestAsyncWorkerGroupQueueRowStreamer(t *testing.T) {
 
 	// Start and close AsyncWorkerGroup in order to force insert.
 	m.Start()
+	time.Sleep(100 * time.Millisecond)
 	m.Close()
 
 	// TestAsyncWorkerGroup for inserted rows by comparing tracked Projects.
@@ -175,22 +176,22 @@ func TestAsyncWorkerGroupQueueRowStreamer(t *testing.T) {
 			"p1": project{
 				"d1": dataset{
 					"t1": table{
-						&bigquery.TableDataInsertAllRequestRows{"id111", map[string]bigquery.JsonValue{"k111": "v111"}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id111", map[string]bigquery.JsonValue{"k111": "v111"}, []string{}, []string{}},
 					},
 					"t2": table{
-						&bigquery.TableDataInsertAllRequestRows{"id112", map[string]bigquery.JsonValue{"k112": "v112"}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id112", map[string]bigquery.JsonValue{"k112": "v112"}, []string{}, []string{}},
 					},
 				},
 				"d2": dataset{
 					"t1": table{
-						&bigquery.TableDataInsertAllRequestRows{"id121", map[string]bigquery.JsonValue{"k121": "v121"}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id121", map[string]bigquery.JsonValue{"k121": "v121"}, []string{}, []string{}},
 					},
 				},
 			},
 			"p2": project{
 				"d1": dataset{
 					"t1": table{
-						&bigquery.TableDataInsertAllRequestRows{"id211", map[string]bigquery.JsonValue{"k211": "v211"}, []string{}},
+						&bigquery.TableDataInsertAllRequestRows{"id211", map[string]bigquery.JsonValue{"k211": "v211"}, []string{}, []string{}},
 					},
 				},
 			},
