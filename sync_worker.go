@@ -143,10 +143,9 @@ func (w *SyncWorker) insertAll(insertFunc func(projectID, datasetID, tableID str
 //
 // It returns tableErrors contains information about rows that were not inserted.
 //
-// TODO cache bigquery service instead of creating a new one every insertTable() call
 // TODO add support for SkipInvalidRows, IgnoreUnknownValues
 func (w *SyncWorker) insertTable(projectID, datasetID, tableID string, tbl table) *TableInsertErrors {
-	res, err := bigquery.NewTabledataService(w.service).
+	res, err := w.service.Tabledata.
 		InsertAll(
 			projectID, datasetID, tableID,
 			&bigquery.TableDataInsertAllRequest{
